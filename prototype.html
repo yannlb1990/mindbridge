@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindBridge - Mental Health Practice Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* =============================================
+           CSS VARIABLES - Design System
+           ============================================= */
+        :root {
+            /* Primary Colors */
+            --sage-green: #7C9885;
+            --sage-light: #A8C5B0;
+            --sage-dark: #5A7360;
+
+            /* Secondary Colors */
+            --warm-sand: #F5F0E8;
+            --cream: #FAF8F5;
+            --warm-beige: #E8E0D5;
+
+            /* Accent Colors */
+            --soft-coral: #E8A598;
+            --calm-blue: #8BA4B4;
+            --gentle-gold: #D4B896;
+
+            /* Semantic */
+            --success: #7C9885;
+            --warning: #D4A574;
+            --error: #C97B7B;
+            --info: #8BA4B4;
+
+            /* Text */
+            --text-primary: #2D3436;
+            --text-secondary: #636E72;
+            --text-muted: #9CA3A8;
+            --text-light: #FFFFFF;
+
+            /* Risk Colors */
+            --risk-low: #7C9885;
+            --risk-moderate: #D4A574;
+            --risk-high: #C97B7B;
+            --risk-critical: #9B4D4D;
+
+            /* Spacing */
+            --space-1: 0.25rem;
+            --space-2: 0.5rem;
+            --space-3: 0.75rem;
+            --space-4: 1rem;
+            --space-6: 1.5rem;
+            --space-8: 2rem;
+            --space-12: 3rem;
+
+            /* Border Radius */
+            --radius-sm: 0.25rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-full: 9999px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* =============================================
+           BASE STYLES
+           ============================================= */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--cream);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        /* =============================================
+           NAVIGATION
+           ============================================= */
+        .nav {
+            background: white;
+            padding: var(--space-4) var(--space-8);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-logo {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--sage-green);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .nav-logo svg {
+            width: 32px;
+            height: 32px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: var(--space-6);
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--sage-green);
+        }
+
+        .btn {
+            padding: var(--space-3) var(--space-6);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            font-size: 0.875rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .btn-primary {
+            background: var(--sage-green);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--sage-dark);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--sage-green);
+            border: 1px solid var(--sage-green);
+        }
+
+        .btn-secondary:hover {
+            background: var(--sage-green);
+            color: white;
+        }
+
+        /* =============================================
+           HERO SECTION
+           ============================================= */
+        .hero {
+            padding: var(--space-12) var(--space-8);
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: var(--space-4);
+            color: var(--text-primary);
+        }
+
+        .hero h1 span {
+            color: var(--sage-green);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-8);
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--space-4);
+            justify-content: center;
+            margin-bottom: var(--space-12);
+        }
+
+        .hero-features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-6);
+            margin-top: var(--space-8);
+        }
+
+        .hero-feature {
+            background: white;
+            padding: var(--space-6);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .hero-feature-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--warm-sand);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-4);
+            color: var(--sage-green);
+        }
+
+        .hero-feature h3 {
+            font-size: 1rem;
+            margin-bottom: var(--space-2);
+        }
+
+        .hero-feature p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* =============================================
+           VIEW SWITCHER
+           ============================================= */
+        .view-switcher {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-2);
+            padding: var(--space-4);
+            background: var(--warm-sand);
+        }
+
+        .view-btn {
+            padding: var(--space-3) var(--space-6);
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: var(--radius-md);
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: white;
+            color: var(--sage-green);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* =============================================
+           CLINICIAN DASHBOARD
+           ============================================= */
+        .dashboard {
+            display: none;
+            padding: var(--space-6);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .dashboard.active {
+            display: block;
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-6);
+        }
+
+        .dashboard-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .dashboard-header p {
+            color: var(--text-secondary);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+
+        .stat-card {
+            background: white;
+            padding: var(--space-6);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-2);
+        }
+
+        .stat-card-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-card-change {
+            font-size: 0.75rem;
+            color: var(--success);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: var(--space-6);
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: var(--space-4) var(--space-6);
+            border-bottom: 1px solid var(--warm-beige);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h3 {
+            font-size: 1rem;
+        }
+
+        .card-body {
+            padding: var(--space-4) var(--space-6);
+        }
+
+        /* Schedule */
+        .schedule-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-4);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--warm-beige);
+        }
+
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+
+        .schedule-time {
+            font-weight: 600;
+            color: var(--sage-green);
+            width: 60px;
+        }
+
+        .schedule-client {
+            flex: 1;
+        }
+
+        .schedule-client-name {
+            font-weight: 500;
+        }
+
+        .schedule-client-type {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .schedule-badge {
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-telehealth {
+            background: #E8F4FD;
+            color: #0369A1;
+        }
+
+        .badge-inperson {
+            background: #F0FDF4;
+            color: #166534;
+        }
+
+        /* Alerts */
+        .alert-item {
+            display: flex;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--warm-beige);
+        }
+
+        .alert-item:last-child {
+            border-bottom: none;
+        }
+
+        .alert-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+        }
+
+        .alert-warning {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .alert-success {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .alert-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Client List */
+        .client-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+            border-bottom: 1px solid var(--warm-beige);
+        }
+
+        .client-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-full);
+            background: var(--warm-sand);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--sage-dark);
+        }
+
+        .client-info {
+            flex: 1;
+        }
+
+        .client-name {
+            font-weight: 500;
+        }
+
+        .client-diagnosis {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .risk-badge {
+            padding: var(--space-1) var(--space-2);
+            border-radius: var(--radius-sm);
+            font-size: 0.625rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .risk-low {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .risk-moderate {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .risk-high {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        /* Age Distribution Chart */
+        .age-chart {
+            display: flex;
+            gap: var(--space-2);
+            align-items: flex-end;
+            height: 100px;
+            padding: var(--space-4) 0;
+        }
+
+        .age-bar {
+            flex: 1;
+            background: var(--sage-light);
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            position: relative;
+        }
+
+        .age-bar-label {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.625rem;
+            color: var(--text-secondary);
+        }
+
+        /* =============================================
+           CLIENT APP VIEW
+           ============================================= */
+        .client-app {
+            display: none;
+            max-width: 400px;
+            margin: var(--space-6) auto;
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .client-app.active {
+            display: block;
+        }
+
+        .app-header {
+            background: var(--sage-green);
+            color: white;
+            padding: var(--space-6);
+        }
+
+        .app-greeting {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: var(--space-1);
+        }
+
+        .app-date {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .mood-check {
+            background: white;
+            margin: calc(-1 * var(--space-4)) var(--space-4) var(--space-4);
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            text-align: center;
+        }
+
+        .mood-check p {
+            font-weight: 500;
+            margin-bottom: var(--space-3);
+        }
+
+        .mood-options {
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .mood-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-1);
+            cursor: pointer;
+            padding: var(--space-2);
+            border-radius: var(--radius-md);
+            transition: background 0.2s;
+        }
+
+        .mood-option:hover {
+            background: var(--warm-sand);
+        }
+
+        .mood-option.selected {
+            background: var(--sage-light);
+        }
+
+        .mood-emoji {
+            font-size: 1.5rem;
+        }
+
+        .mood-label {
+            font-size: 0.625rem;
+            color: var(--text-secondary);
+        }
+
+        .app-content {
+            padding: var(--space-4);
+        }
+
+        .app-section {
+            margin-bottom: var(--space-6);
+        }
+
+        .app-section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: var(--space-3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .homework-card {
+            background: var(--warm-sand);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-3);
+        }
+
+        .homework-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .homework-info h4 {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .homework-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .homework-due {
+            font-size: 0.625rem;
+            color: var(--soft-coral);
+            font-weight: 500;
+        }
+
+        .session-card {
+            background: var(--sage-green);
+            color: white;
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-info h4 {
+            font-weight: 500;
+            margin-bottom: var(--space-1);
+        }
+
+        .session-info p {
+            font-size: 0.75rem;
+            opacity: 0.9;
+        }
+
+        .session-join {
+            background: white;
+            color: var(--sage-green);
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            font-size: 0.75rem;
+            border: none;
+            cursor: pointer;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-2);
+        }
+
+        .quick-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-3);
+            background: var(--warm-sand);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+        }
+
+        .quick-action:hover {
+            background: var(--warm-beige);
+        }
+
+        .quick-action-icon {
+            font-size: 1.25rem;
+        }
+
+        .quick-action-label {
+            font-size: 0.625rem;
+            color: var(--text-secondary);
+        }
+
+        .safety-btn {
+            width: 100%;
+            padding: var(--space-4);
+            background: var(--soft-coral);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+        }
+
+        /* App Navigation */
+        .app-nav {
+            display: flex;
+            border-top: 1px solid var(--warm-beige);
+            padding: var(--space-2);
+        }
+
+        .app-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-1);
+            padding: var(--space-2);
+            color: var(--text-secondary);
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .app-nav-item.active {
+            color: var(--sage-green);
+        }
+
+        .app-nav-icon {
+            font-size: 1.25rem;
+        }
+
+        .app-nav-label {
+            font-size: 0.625rem;
+        }
+
+        /* =============================================
+           PARENT PORTAL VIEW
+           ============================================= */
+        .parent-portal {
+            display: none;
+            max-width: 600px;
+            margin: var(--space-6) auto;
+            background: white;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .parent-portal.active {
+            display: block;
+        }
+
+        .parent-header {
+            background: var(--calm-blue);
+            color: white;
+            padding: var(--space-6);
+        }
+
+        .parent-header h2 {
+            font-size: 1.25rem;
+            margin-bottom: var(--space-1);
+        }
+
+        .parent-header p {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .parent-content {
+            padding: var(--space-6);
+        }
+
+        .child-summary {
+            background: var(--warm-sand);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-6);
+        }
+
+        .child-summary-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+            margin-bottom: var(--space-4);
+        }
+
+        .child-avatar {
+            width: 48px;
+            height: 48px;
+            background: var(--sage-light);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .child-name h3 {
+            font-size: 1rem;
+        }
+
+        .child-name p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-3);
+        }
+
+        .summary-stat {
+            text-align: center;
+        }
+
+        .summary-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--sage-green);
+        }
+
+        .summary-stat-label {
+            font-size: 0.625rem;
+            color: var(--text-secondary);
+        }
+
+        /* =============================================
+           FOOTER
+           ============================================= */
+        .footer {
+            background: var(--text-primary);
+            color: white;
+            padding: var(--space-12) var(--space-8);
+            margin-top: var(--space-12);
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: var(--space-8);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-brand h3 {
+            font-size: 1.5rem;
+            margin-bottom: var(--space-4);
+            color: var(--sage-light);
+        }
+
+        .footer-brand p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .footer-links h4 {
+            font-size: 0.875rem;
+            margin-bottom: var(--space-4);
+            color: white;
+        }
+
+        .footer-links a {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+            margin-bottom: var(--space-2);
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin-top: var(--space-8);
+            padding-top: var(--space-6);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* =============================================
+           RESPONSIVE
+           ============================================= */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero-features {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <a href="#" class="nav-logo">
+            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/>
+                <path d="M10 16C10 16 12 12 16 12C20 12 22 16 22 16C22 16 20 20 16 20C12 20 10 16 10 16Z" stroke="currentColor" stroke-width="2"/>
+                <circle cx="16" cy="16" r="3" fill="currentColor"/>
+            </svg>
+            MindBridge
+        </a>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#clinicians">For Clinicians</a>
+            <a href="#clients">For Clients</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#" class="btn btn-secondary">Log In</a>
+            <a href="#" class="btn btn-primary">Get Started</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Your bridge to better<br><span>mental health care</span></h1>
+        <p>The all-in-one platform for Australian mental health professionals. AI-powered documentation, seamless client engagement, and evidence-based tools for eating disorders and youth mental health.</p>
+
+        <div class="hero-buttons">
+            <a href="#" class="btn btn-primary">Start Free Trial</a>
+            <a href="#" class="btn btn-secondary">Book a Demo</a>
+        </div>
+
+        <div class="hero-features">
+            <div class="hero-feature">
+                <div class="hero-feature-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <h3>AI-Powered Documentation</h3>
+                <p>Save 30+ minutes per session with intelligent note generation. SOAP, DAP, BIRP formats supported.</p>
+            </div>
+            <div class="hero-feature">
+                <div class="hero-feature-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <h3>Client Engagement App</h3>
+                <p>Keep clients engaged between sessions with mood tracking, homework, and a safe sharing space.</p>
+            </div>
+            <div class="hero-feature">
+                <div class="hero-feature-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h3>Australian Privacy Compliant</h3>
+                <p>Built for Australian healthcare. Full Privacy Act and APP compliance with local data storage.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- View Switcher -->
+    <div class="view-switcher">
+        <button class="view-btn active" onclick="showView('dashboard')">Clinician Dashboard</button>
+        <button class="view-btn" onclick="showView('client')">Client App</button>
+        <button class="view-btn" onclick="showView('parent')">Parent Portal</button>
+    </div>
+
+    <!-- Clinician Dashboard -->
+    <div id="dashboard" class="dashboard active">
+        <div class="dashboard-header">
+            <div>
+                <h2>Good morning, Dr. Smith</h2>
+                <p>Tuesday, 15 January 2026</p>
+            </div>
+            <button class="btn btn-primary">+ New Client</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">Today's Sessions</span>
+                    <span style="color: var(--sage-green);">📅</span>
+                </div>
+                <div class="stat-card-value">5</div>
+                <div class="stat-card-change">Next: 9:00 AM</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">Pending Notes</span>
+                    <span style="color: var(--warning);">📝</span>
+                </div>
+                <div class="stat-card-value">3</div>
+                <div class="stat-card-change">Complete by EOD</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">Client Alerts</span>
+                    <span style="color: var(--error);">⚠️</span>
+                </div>
+                <div class="stat-card-value">2</div>
+                <div class="stat-card-change">Requires attention</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <span class="stat-card-label">This Month</span>
+                    <span style="color: var(--success);">💰</span>
+                </div>
+                <div class="stat-card-value">$4,840</div>
+                <div class="stat-card-change">+12% vs last month</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div>
+                <div class="card" style="margin-bottom: var(--space-6);">
+                    <div class="card-header">
+                        <h3>Today's Schedule</h3>
+                        <a href="#" style="color: var(--sage-green); font-size: 0.875rem;">View All</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="schedule-item">
+                            <span class="schedule-time">9:00</span>
+                            <div class="schedule-client">
+                                <div class="schedule-client-name">Sarah M.</div>
+                                <div class="schedule-client-type">Individual - AN Recovery</div>
+                            </div>
+                            <span class="schedule-badge badge-telehealth">Telehealth</span>
+                        </div>
+                        <div class="schedule-item">
+                            <span class="schedule-time">10:00</span>
+                            <div class="schedule-client">
+                                <div class="schedule-client-name">James T.</div>
+                                <div class="schedule-client-type">Individual - Anxiety</div>
+                            </div>
+                            <span class="schedule-badge badge-inperson">In-person</span>
+                        </div>
+                        <div class="schedule-item">
+                            <span class="schedule-time">11:30</span>
+                            <div class="schedule-client">
+                                <div class="schedule-client-name">Chen Family</div>
+                                <div class="schedule-client-type">Family Session - FBT</div>
+                            </div>
+                            <span class="schedule-badge badge-inperson">In-person</span>
+                        </div>
+                        <div class="schedule-item">
+                            <span class="schedule-time">14:00</span>
+                            <div class="schedule-client">
+                                <div class="schedule-client-name">Alex R.</div>
+                                <div class="schedule-client-type">Initial Assessment</div>
+                            </div>
+                            <span class="schedule-badge badge-telehealth">Telehealth</span>
+                        </div>
+                        <div class="schedule-item">
+                            <span class="schedule-time">15:30</span>
+                            <div class="schedule-client">
+                                <div class="schedule-client-name">Supervision</div>
+                                <div class="schedule-client-type">Dr. Williams</div>
+                            </div>
+                            <span class="schedule-badge badge-telehealth">Telehealth</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Client Age Distribution</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="age-chart">
+                            <div class="age-bar" style="height: 40%;">
+                                <span class="age-bar-label">8-12</span>
+                            </div>
+                            <div class="age-bar" style="height: 70%;">
+                                <span class="age-bar-label">13-17</span>
+                            </div>
+                            <div class="age-bar" style="height: 90%;">
+                                <span class="age-bar-label">18-25</span>
+                            </div>
+                            <div class="age-bar" style="height: 60%;">
+                                <span class="age-bar-label">26-35</span>
+                            </div>
+                            <div class="age-bar" style="height: 30%;">
+                                <span class="age-bar-label">36+</span>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: var(--space-4);">
+                            Total Active Clients: 24
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="card" style="margin-bottom: var(--space-6);">
+                    <div class="card-header">
+                        <h3>Client Alerts</h3>
+                        <span style="background: var(--error); color: white; padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem;">2</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert-item">
+                            <div class="alert-icon alert-warning">⚠️</div>
+                            <div class="alert-content">
+                                <div class="alert-title">Sarah M. - PHQ-9 Increased</div>
+                                <div class="alert-desc">Score: 8 → 14 (moderate-severe)</div>
+                            </div>
+                        </div>
+                        <div class="alert-item">
+                            <div class="alert-icon alert-warning">⚠️</div>
+                            <div class="alert-content">
+                                <div class="alert-title">James T. - Missed Homework</div>
+                                <div class="alert-desc">3 assignments overdue</div>
+                            </div>
+                        </div>
+                        <div class="alert-item">
+                            <div class="alert-icon alert-success">✓</div>
+                            <div class="alert-content">
+                                <div class="alert-title">Alex R. - Safety Plan</div>
+                                <div class="alert-desc">Completed and reviewed</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Recent Clients</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="client-item">
+                            <div class="client-avatar">SM</div>
+                            <div class="client-info">
+                                <div class="client-name">Sarah Mitchell</div>
+                                <div class="client-diagnosis">AN-R, GAD</div>
+                            </div>
+                            <span class="risk-badge risk-moderate">Mod</span>
+                        </div>
+                        <div class="client-item">
+                            <div class="client-avatar">JT</div>
+                            <div class="client-info">
+                                <div class="client-name">James Taylor</div>
+                                <div class="client-diagnosis">GAD, Social Anxiety</div>
+                            </div>
+                            <span class="risk-badge risk-low">Low</span>
+                        </div>
+                        <div class="client-item">
+                            <div class="client-avatar">AR</div>
+                            <div class="client-info">
+                                <div class="client-name">Alex Roberts</div>
+                                <div class="client-diagnosis">MDD, PTSD</div>
+                            </div>
+                            <span class="risk-badge risk-high">High</span>
+                        </div>
+                        <div class="client-item">
+                            <div class="client-avatar">LC</div>
+                            <div class="client-info">
+                                <div class="client-name">Lucy Chen</div>
+                                <div class="client-diagnosis">BN, Depression</div>
+                            </div>
+                            <span class="risk-badge risk-moderate">Mod</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client App -->
+    <div id="client" class="client-app">
+        <div class="app-header">
+            <div class="app-greeting">Good morning, Sarah 👋</div>
+            <div class="app-date">Tuesday, 15 January</div>
+        </div>
+
+        <div class="mood-check">
+            <p>How are you feeling today?</p>
+            <div class="mood-options">
+                <div class="mood-option" onclick="selectMood(this)">
+                    <span class="mood-emoji">😢</span>
+                    <span class="mood-label">Struggling</span>
+                </div>
+                <div class="mood-option" onclick="selectMood(this)">
+                    <span class="mood-emoji">😕</span>
+                    <span class="mood-label">Low</span>
+                </div>
+                <div class="mood-option" onclick="selectMood(this)">
+                    <span class="mood-emoji">😐</span>
+                    <span class="mood-label">Okay</span>
+                </div>
+                <div class="mood-option selected" onclick="selectMood(this)">
+                    <span class="mood-emoji">🙂</span>
+                    <span class="mood-label">Good</span>
+                </div>
+                <div class="mood-option" onclick="selectMood(this)">
+                    <span class="mood-emoji">😊</span>
+                    <span class="mood-label">Great</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-content">
+            <div class="app-section">
+                <div class="app-section-title">
+                    <span>Your Homework</span>
+                    <span style="color: var(--text-secondary); font-size: 0.75rem;">2 pending</span>
+                </div>
+                <div class="homework-card">
+                    <div class="homework-icon">📝</div>
+                    <div class="homework-info">
+                        <h4>Thought Record</h4>
+                        <p>Challenge unhelpful thinking patterns</p>
+                        <span class="homework-due">Due today</span>
+                    </div>
+                </div>
+                <div class="homework-card">
+                    <div class="homework-icon">🍽️</div>
+                    <div class="homework-info">
+                        <h4>Meal Log</h4>
+                        <p>Log breakfast and lunch</p>
+                        <span class="homework-due">Ongoing</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-section">
+                <div class="app-section-title">Next Session</div>
+                <div class="session-card">
+                    <div class="session-info">
+                        <h4>Thursday, 9:00 AM</h4>
+                        <p>with Dr. Jane Smith (Telehealth)</p>
+                    </div>
+                    <button class="session-join">Join</button>
+                </div>
+            </div>
+
+            <div class="app-section">
+                <div class="app-section-title">Quick Actions</div>
+                <div class="quick-actions">
+                    <button class="quick-action">
+                        <span class="quick-action-icon">📓</span>
+                        <span class="quick-action-label">Journal</span>
+                    </button>
+                    <button class="quick-action">
+                        <span class="quick-action-icon">🎯</span>
+                        <span class="quick-action-label">Goals</span>
+                    </button>
+                    <button class="quick-action">
+                        <span class="quick-action-icon">📚</span>
+                        <span class="quick-action-label">Resources</span>
+                    </button>
+                    <button class="quick-action">
+                        <span class="quick-action-icon">💬</span>
+                        <span class="quick-action-label">Message</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="app-section">
+                <button class="safety-btn">
+                    🆘 My Safety Plan
+                </button>
+            </div>
+        </div>
+
+        <nav class="app-nav">
+            <button class="app-nav-item active">
+                <span class="app-nav-icon">🏠</span>
+                <span class="app-nav-label">Home</span>
+            </button>
+            <button class="app-nav-item">
+                <span class="app-nav-icon">📓</span>
+                <span class="app-nav-label">Journal</span>
+            </button>
+            <button class="app-nav-item">
+                <span class="app-nav-icon">✏️</span>
+                <span class="app-nav-label">Exercises</span>
+            </button>
+            <button class="app-nav-item">
+                <span class="app-nav-icon">📊</span>
+                <span class="app-nav-label">Progress</span>
+            </button>
+            <button class="app-nav-item">
+                <span class="app-nav-icon">⚙️</span>
+                <span class="app-nav-label">More</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Parent Portal -->
+    <div id="parent" class="parent-portal">
+        <div class="parent-header">
+            <h2>Parent Portal</h2>
+            <p>Stay connected with your child's progress</p>
+        </div>
+
+        <div class="parent-content">
+            <div class="child-summary">
+                <div class="child-summary-header">
+                    <div class="child-avatar">👧</div>
+                    <div class="child-name">
+                        <h3>Sarah's Progress</h3>
+                        <p>Last updated: Today, 8:30 AM</p>
+                    </div>
+                </div>
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">7</div>
+                        <div class="summary-stat-label">Day Streak</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">85%</div>
+                        <div class="summary-stat-label">Homework Done</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">🙂</div>
+                        <div class="summary-stat-label">Avg Mood</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-section">
+                <div class="app-section-title">Weekly Mood Trend</div>
+                <div style="display: flex; gap: 8px; align-items: flex-end; height: 60px; padding: 16px 0;">
+                    <div style="flex: 1; background: var(--sage-light); height: 40%; border-radius: 4px;"></div>
+                    <div style="flex: 1; background: var(--sage-light); height: 60%; border-radius: 4px;"></div>
+                    <div style="flex: 1; background: var(--sage-light); height: 50%; border-radius: 4px;"></div>
+                    <div style="flex: 1; background: var(--sage-light); height: 70%; border-radius: 4px;"></div>
+                    <div style="flex: 1; background: var(--sage-light); height: 80%; border-radius: 4px;"></div>
+                    <div style="flex: 1; background: var(--sage-light); height: 60%; border-radius: 4px;"></div>
+                    <div style="flex: 1; background: var(--sage-green); height: 75%; border-radius: 4px;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.625rem; color: var(--text-secondary);">
+                    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                </div>
+            </div>
+
+            <div class="app-section">
+                <div class="app-section-title">Upcoming Sessions</div>
+                <div class="homework-card">
+                    <div class="homework-icon">📅</div>
+                    <div class="homework-info">
+                        <h4>Family Session</h4>
+                        <p>Thursday 22 Jan, 4:00 PM</p>
+                        <span style="font-size: 0.625rem; color: var(--sage-green);">You're invited</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="app-section">
+                <div class="app-section-title">Quick Actions</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <button class="quick-action" style="padding: 16px;">
+                        <span class="quick-action-icon">💬</span>
+                        <span class="quick-action-label">Message Clinician</span>
+                    </button>
+                    <button class="quick-action" style="padding: 16px;">
+                        <span class="quick-action-icon">📋</span>
+                        <span class="quick-action-label">View Resources</span>
+                    </button>
+                </div>
+            </div>
+
+            <div style="background: var(--warm-sand); padding: 16px; border-radius: 8px; margin-top: 24px;">
+                <p style="font-size: 0.75rem; color: var(--text-secondary); text-align: center;">
+                    🔒 Sarah has chosen to share this information with you.<br>
+                    Journal entries remain private unless shared.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <h3>MindBridge</h3>
+                <p>Your bridge to better mental health care. Built for Australian mental health professionals with privacy and compliance at the core.</p>
+            </div>
+            <div class="footer-links">
+                <h4>Platform</h4>
+                <a href="#">Features</a>
+                <a href="#">For Clinicians</a>
+                <a href="#">For Clients</a>
+                <a href="#">Pricing</a>
+            </div>
+            <div class="footer-links">
+                <h4>Resources</h4>
+                <a href="#">Help Centre</a>
+                <a href="#">Documentation</a>
+                <a href="#">API</a>
+                <a href="#">Blog</a>
+            </div>
+            <div class="footer-links">
+                <h4>Legal</h4>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Security</a>
+                <a href="#">Compliance</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 MindBridge. Australian Privacy Act & APP Compliant. All data stored in Australia.</p>
+        </div>
+    </footer>
+
+    <script>
+        function showView(view) {
+            // Update buttons
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update views
+            document.getElementById('dashboard').classList.remove('active');
+            document.getElementById('client').classList.remove('active');
+            document.getElementById('parent').classList.remove('active');
+            document.getElementById(view).classList.add('active');
+        }
+
+        function selectMood(element) {
+            document.querySelectorAll('.mood-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+    </script>
+</body>
+</html>
