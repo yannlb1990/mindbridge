@@ -92,3 +92,12 @@ export function getMoodLabel(rating: number): string {
   };
   return labels[rating] || 'Neutral';
 }
+
+export type AgeGroup = 'child' | 'teen' | 'adult';
+
+export function getAgeGroup(dateOfBirth: string): AgeGroup {
+  const age = calculateAge(dateOfBirth);
+  if (age < 13) return 'child';
+  if (age < 18) return 'teen';
+  return 'adult';
+}

@@ -21,7 +21,7 @@ export type SessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancell
 export type RiskLevel = 'low' | 'moderate' | 'high' | 'critical';
 export type MoodRating = 1 | 2 | 3 | 4 | 5; // 1 = struggling, 5 = great
 export type HomeworkStatus = 'assigned' | 'in_progress' | 'completed' | 'overdue';
-export type NoteFormat = 'soap' | 'dap' | 'birp' | 'narrative' | 'brief';
+export type NoteFormat = 'soap' | 'dap' | 'birp' | 'narrative' | 'brief' | 'structured';
 
 export interface Database {
   public: {

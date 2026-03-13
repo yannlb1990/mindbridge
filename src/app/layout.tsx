@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
+import ThemeProvider from '@/components/ThemeProvider';
 import './globals.css';
 
 const inter = Inter({
@@ -24,7 +25,28 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${plusJakarta.variable}`}>
-      <body className="font-sans">{children}</body>
+      <head>
+        {/* Apply stored theme/accent before first paint to prevent flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var s = JSON.parse(localStorage.getItem('mindbridge-appearance') || '{}');
+                var t = (s.state && s.state.theme) || 'light';
+                var resolved = t === 'system'
+                  ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                  : t;
+                document.documentElement.setAttribute('data-theme', resolved);
+                var accent = (s.state && s.state.accentColor) || 'sage';
+                document.documentElement.setAttribute('data-accent', accent);
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="font-sans">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

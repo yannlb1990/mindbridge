@@ -1,38 +1,28 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Loader2 } from 'lucide-react';
 
-export default function ProtectedLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const router = useRouter();
-  const { user, isLoading, checkAuth } = useAuthStore();
+export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    if (mounted && hasHydrated && !user) window.location.href = '/auth/login';
+  }, [mounted, hasHydrated, user]);
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/auth/login');
-    }
-  }, [isLoading, user, router]);
-
-  if (isLoading) {
+  if (!mounted || !hasHydrated || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-cream">
         <Loader2 className="w-8 h-8 animate-spin text-sage" />
       </div>
     );
   }
-
-  if (!user) return null;
 
   return (
     <div className="flex min-h-screen bg-cream">

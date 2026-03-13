@@ -14,6 +14,10 @@ export const isSupabaseConfigured = () => {
 // Demo mode flag
 export const isDemoMode = !isSupabaseConfigured();
 
+// Returns true if we should use demo data — either no Supabase config or logged in as demo user
+export const isEffectiveDemo = (userId?: string) =>
+  isDemoMode || (userId?.startsWith('demo-') ?? false);
+
 // Create Supabase client - use 'any' type when not configured to avoid type errors
 export const supabase: SupabaseClient<any> = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',

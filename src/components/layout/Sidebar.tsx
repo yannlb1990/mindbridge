@@ -16,6 +16,11 @@ import {
   Mic,
   ClipboardList,
   Shield,
+  BookOpen,
+  Sparkles,
+  FileStack,
+  Link2,
+  ArrowLeftRight,
 } from 'lucide-react';
 
 const navigation = [
@@ -23,19 +28,23 @@ const navigation = [
   { name: 'Clients', href: '/clients', icon: Users },
   { name: 'Schedule', href: '/schedule', icon: Calendar },
   { name: 'Clinical Notes', href: '/notes', icon: FileText },
-  { name: 'AI Scribe', href: '/scribe', icon: Mic },
+  { name: 'Session Capture', href: '/session-capture', icon: Mic, isNew: true },
+  { name: 'AI Insights', href: '/insights', icon: Sparkles, isNew: true },
   { name: 'Assessments', href: '/assessments', icon: ClipboardList },
+  { name: 'Templates', href: '/templates', icon: FileStack, isNew: true },
+  { name: 'Library', href: '/library', icon: BookOpen },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
 ];
 
 const secondaryNavigation = [
+  { name: 'Integrations', href: '/integrations', icon: Link2, isNew: true },
   { name: 'Safety Plans', href: '/safety-plans', icon: Shield },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, clinicianProfile, signOut } = useAuthStore();
+  const { user, clinicianProfile, signOut, signIn, isDemoMode } = useAuthStore();
 
   const displayName = user?.preferred_name || `${user?.first_name} ${user?.last_name}`;
 
@@ -56,6 +65,7 @@ export function Sidebar() {
         <ul className="space-y-1">
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isNew = 'isNew' in item && item.isNew;
             return (
               <li key={item.name}>
                 <Link
@@ -69,6 +79,11 @@ export function Sidebar() {
                 >
                   <item.icon className={cn('w-5 h-5', isActive ? 'text-sage' : '')} />
                   {item.name}
+                  {isNew && (
+                    <span className="ml-auto text-[10px] font-bold uppercase px-1.5 py-0.5 bg-sage text-white rounded">
+                      New
+                    </span>
+                  )}
                 </Link>
               </li>
             );
@@ -82,6 +97,7 @@ export function Sidebar() {
           <ul className="space-y-1">
             {secondaryNavigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+              const isNew = 'isNew' in item && item.isNew;
               return (
                 <li key={item.name}>
                   <Link
@@ -95,6 +111,11 @@ export function Sidebar() {
                   >
                     <item.icon className={cn('w-5 h-5', isActive ? 'text-sage' : '')} />
                     {item.name}
+                    {isNew && (
+                      <span className="ml-auto text-[10px] font-bold uppercase px-1.5 py-0.5 bg-sage text-white rounded">
+                        New
+                      </span>
+                    )}
                   </Link>
                 </li>
               );
@@ -104,7 +125,21 @@ export function Sidebar() {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t border-beige">
+      <div className="p-4 border-t border-beige space-y-2">
+        {/* Switch to client portal (demo mode only) */}
+        {isDemoMode && (
+          <button
+            onClick={async () => {
+              await signIn('client@mindbridge.com.au', 'client123');
+              window.location.href = '/client/dashboard';
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-calm-dark bg-calm/10 hover:bg-calm/20 transition-colors"
+          >
+            <ArrowLeftRight className="w-4 h-4 flex-shrink-0" />
+            <span>Switch to Client Portal</span>
+          </button>
+        )}
+
         <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-sand transition-colors">
           <Avatar
             src={user?.avatar_url}
@@ -117,7 +152,7 @@ export function Sidebar() {
             <p className="text-xs text-text-muted truncate">{clinicianProfile?.credentials}</p>
           </div>
           <button
-            onClick={() => signOut()}
+            onClick={async () => { await signOut(); window.location.href = '/auth/login'; }}
             className="p-2 text-text-muted hover:text-coral-dark hover:bg-coral/10 rounded-lg transition-colors"
             title="Sign out"
           >

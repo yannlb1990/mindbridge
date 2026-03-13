@@ -2,6 +2,44 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase, isDemoMode } from '@/lib/supabase';
 import type { User, ClinicianProfile } from '@/types/database';
+import { getAgeGroup, type AgeGroup } from '@/lib/utils';
+
+export interface ClientProfile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  preferred_name?: string;
+  date_of_birth: string;
+  clinician_name: string;
+}
+
+// Demo client user (teenager, 16yo)
+const DEMO_CLIENT_USER: User = {
+  id: 'demo-client-1',
+  email: 'client@mindbridge.com.au',
+  first_name: 'Alex',
+  last_name: 'Rivera',
+  preferred_name: 'Alex',
+  role: 'client',
+  phone: null,
+  date_of_birth: '2009-08-15',
+  pronouns: 'they/them',
+  avatar_url: null,
+  timezone: 'Australia/Sydney',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  last_active: new Date().toISOString(),
+  is_active: true,
+};
+
+const DEMO_CLIENT_PROFILE: ClientProfile = {
+  id: 'demo-client-profile-1',
+  first_name: 'Alex',
+  last_name: 'Rivera',
+  preferred_name: 'Alex',
+  date_of_birth: '2009-08-15',
+  clinician_name: 'Dr. Sarah Mitchell',
+};
 
 // Demo user for testing without Supabase
 const DEMO_USER: User = {
@@ -42,13 +80,17 @@ const DEMO_CLINICIAN_PROFILE: ClinicianProfile = {
 interface AuthState {
   user: User | null;
   clinicianProfile: ClinicianProfile | null;
+  clientProfile: ClientProfile | null;
+  ageGroup: AgeGroup | null;
   isLoading: boolean;
+  hasHydrated: boolean;
   error: string | null;
   isDemoMode: boolean;
 
   // Actions
+  setHasHydrated: (state: boolean) => void;
   checkAuth: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; role?: string }>;
   signUp: (data: SignUpData) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
   clearError: () => void;
@@ -70,19 +112,29 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       clinicianProfile: null,
+      clientProfile: null,
+      ageGroup: null,
       isLoading: true,
+      hasHydrated: false,
       error: null,
       isDemoMode: isDemoMode,
 
+      setHasHydrated: (value: boolean) => {
+        set({ hasHydrated: value, isLoading: false });
+      },
+
       checkAuth: async () => {
+        const state = get();
+
+        // If we already have a user (from hydration), just set loading to false
+        if (state.user) {
+          set({ isLoading: false });
+          return;
+        }
+
         if (isDemoMode) {
-          // In demo mode, check if we have a persisted demo session
-          const state = get();
-          if (state.user?.id === 'demo-clinician-1') {
-            set({ isLoading: false });
-            return;
-          }
-          set({ isLoading: false, user: null, clinicianProfile: null });
+          // In demo mode, if no user persisted, set loading false
+          set({ isLoading: false });
           return;
         }
 
@@ -126,17 +178,34 @@ export const useAuthStore = create<AuthState>()(
       signIn: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
 
-        // Demo mode login
+        // Demo client login
+        if (email === 'client@mindbridge.com.au' && password === 'client123') {
+          set({
+            user: DEMO_CLIENT_USER,
+            clinicianProfile: null,
+            clientProfile: DEMO_CLIENT_PROFILE,
+            ageGroup: getAgeGroup(DEMO_CLIENT_PROFILE.date_of_birth),
+            isLoading: false,
+            isDemoMode: true,
+          });
+          return { success: true, role: 'client' };
+        }
+
+        // Demo mode login - always allow demo credentials
+        if (email === 'demo@mindbridge.com.au' && password === 'demo123') {
+          set({
+            user: DEMO_USER,
+            clinicianProfile: DEMO_CLINICIAN_PROFILE,
+            clientProfile: null,
+            ageGroup: null,
+            isLoading: false,
+            isDemoMode: true,
+          });
+          return { success: true, role: 'clinician' };
+        }
+
+        // If in demo mode and not demo credentials
         if (isDemoMode) {
-          if (email === 'demo@mindbridge.com.au' && password === 'demo123') {
-            set({
-              user: DEMO_USER,
-              clinicianProfile: DEMO_CLINICIAN_PROFILE,
-              isLoading: false,
-              isDemoMode: true,
-            });
-            return { success: true };
-          }
           set({ isLoading: false, error: 'Invalid demo credentials' });
           return { success: false, error: 'Use demo@mindbridge.com.au / demo123' };
         }
@@ -154,15 +223,22 @@ export const useAuthStore = create<AuthState>()(
 
           if (data.user) {
             // Fetch user profile
-            const { data: userProfile } = await supabase
+            const { data: userProfile, error: profileError } = await supabase
               .from('users')
               .select('*')
               .eq('id', data.user.id)
               .single();
 
+            if (profileError || !userProfile) {
+              // Auth succeeded but profile row missing — likely RLS or signup timing issue
+              await supabase.auth.signOut();
+              set({ isLoading: false, error: 'Account setup incomplete. Please contact support.' });
+              return { success: false, error: 'Account setup incomplete. Please contact support.' };
+            }
+
             // Fetch clinician profile
             let clinicianProfile: ClinicianProfile | null = null;
-            if (userProfile?.role === 'clinician') {
+            if (userProfile.role === 'clinician') {
               const { data: profile } = await supabase
                 .from('clinician_profiles')
                 .select('*')
@@ -171,8 +247,8 @@ export const useAuthStore = create<AuthState>()(
               clinicianProfile = profile;
             }
 
-            // Update last active
-            await supabase
+            // Update last active (non-blocking)
+            supabase
               .from('users')
               .update({ last_active: new Date().toISOString() })
               .eq('id', data.user.id);
@@ -182,7 +258,7 @@ export const useAuthStore = create<AuthState>()(
               clinicianProfile,
               isLoading: false,
             });
-            return { success: true };
+            return { success: true, role: userProfile.role };
           }
 
           set({ isLoading: false });
@@ -262,13 +338,17 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         set({ isLoading: true });
 
-        if (!isDemoMode) {
+        // Use store's isDemoMode (not module-level) so demo sessions
+        // never call supabase.auth.signOut() and never hang.
+        if (!get().isDemoMode) {
           await supabase.auth.signOut();
         }
 
         set({
           user: null,
           clinicianProfile: null,
+          clientProfile: null,
+          ageGroup: null,
           isLoading: false,
           error: null,
         });
@@ -290,8 +370,15 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         clinicianProfile: state.clinicianProfile,
+        clientProfile: state.clientProfile,
+        ageGroup: state.ageGroup,
         isDemoMode: state.isDemoMode,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Use state directly — safer than useAuthStore.setState which may
+        // be undefined if rehydration fires synchronously during store creation.
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

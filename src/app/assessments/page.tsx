@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -7,7 +8,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { useDemoData } from '@/hooks/useDemoData';
 import { formatDate } from '@/lib/utils';
-import { Plus, ClipboardList, TrendingDown, TrendingUp, Minus, Send } from 'lucide-react';
+import { Plus, ClipboardList, TrendingDown, TrendingUp, Minus, Send, X, CheckCircle } from 'lucide-react';
 
 const assessmentTypes = [
   { id: 'phq9', name: 'PHQ-9', description: 'Depression severity', questions: 9 },
@@ -26,6 +27,25 @@ const recentAssessments = [
 
 export default function AssessmentsPage() {
   const { clients } = useDemoData();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [preselectedAssessment, setPreselectedAssessment] = useState('');
+  const [selectedClient, setSelectedClient] = useState('');
+  const [selectedAssessmentType, setSelectedAssessmentType] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const openModal = (assessmentId = '') => {
+    setPreselectedAssessment(assessmentId);
+    setSelectedAssessmentType(assessmentId);
+    setSelectedClient('');
+    setSent(false);
+    setModalOpen(true);
+  };
+
+  const handleSend = () => {
+    if (!selectedClient || !selectedAssessmentType) return;
+    setSent(true);
+    setTimeout(() => setModalOpen(false), 1800);
+  };
 
   return (
     <div className="min-h-screen">
@@ -33,7 +53,7 @@ export default function AssessmentsPage() {
         title="Assessments"
         subtitle="Standardized psychological assessments"
         actions={
-          <Button leftIcon={<Plus className="w-4 h-4" />}>
+          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => openModal()}>
             Send Assessment
           </Button>
         }
@@ -50,7 +70,7 @@ export default function AssessmentsPage() {
               {assessmentTypes.map((assessment) => (
                 <div
                   key={assessment.id}
-                  className="p-4 border border-beige rounded-xl hover:border-sage hover:bg-sage-50/30 transition-colors cursor-pointer"
+                  className="p-4 border border-beige rounded-xl hover:border-sage hover:bg-sage-50/30 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="p-2 bg-sage-50 rounded-lg">
@@ -60,7 +80,13 @@ export default function AssessmentsPage() {
                   </div>
                   <h3 className="font-semibold text-text-primary">{assessment.name}</h3>
                   <p className="text-sm text-text-muted">{assessment.description}</p>
-                  <Button variant="ghost" size="sm" className="mt-3" leftIcon={<Send className="w-3 h-3" />}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-3"
+                    leftIcon={<Send className="w-3 h-3" />}
+                    onClick={() => openModal(assessment.id)}
+                  >
                     Send to Client
                   </Button>
                 </div>
@@ -99,6 +125,78 @@ export default function AssessmentsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Send Assessment Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-large w-full max-w-md p-6">
+            {sent ? (
+              <div className="text-center py-6">
+                <CheckCircle className="w-14 h-14 text-sage mx-auto mb-3" />
+                <h3 className="text-xl font-semibold text-text-primary mb-1">Assessment Sent!</h3>
+                <p className="text-text-muted text-sm">
+                  The client will receive a link to complete the assessment in their portal.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-semibold text-text-primary">Send Assessment</h3>
+                  <button onClick={() => setModalOpen(false)} className="p-1.5 hover:bg-sand rounded-lg transition-colors">
+                    <X className="w-4 h-4 text-text-muted" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Assessment Type</label>
+                    <select
+                      value={selectedAssessmentType}
+                      onChange={(e) => setSelectedAssessmentType(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-beige rounded-lg bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-sage"
+                    >
+                      <option value="">Select assessment...</option>
+                      {assessmentTypes.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name} — {a.description}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Send to Client</label>
+                    <select
+                      value={selectedClient}
+                      onChange={(e) => setSelectedClient(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-beige rounded-lg bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-sage"
+                    >
+                      <option value="">Select client...</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <p className="text-xs text-text-muted bg-sand rounded-lg p-3">
+                    The client will receive a notification in their portal to complete the assessment. Results will appear in Recent Results once submitted.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <Button variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>Cancel</Button>
+                  <Button
+                    className="flex-1"
+                    leftIcon={<Send className="w-4 h-4" />}
+                    disabled={!selectedClient || !selectedAssessmentType}
+                    onClick={handleSend}
+                  >
+                    Send Assessment
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

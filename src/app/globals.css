@@ -75,6 +75,77 @@
   }
 }
 
+/* ─── Dark mode ─────────────────────────────────────────────── */
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  background-color: #1a1f2e !important;
+  color: #e8eaf0 !important;
+}
+
+html[data-theme="dark"] body {
+  --cream: #1a1f2e;
+  --sand: #1e2436;
+  --beige: #2a3045;
+}
+
+/* Cards and white surfaces */
+html[data-theme="dark"] .bg-white,
+html[data-theme="dark"] [class*="bg-white"] {
+  background-color: #232840 !important;
+}
+
+html[data-theme="dark"] .bg-cream,
+html[data-theme="dark"] [class*="bg-cream"] {
+  background-color: #1a1f2e !important;
+}
+
+html[data-theme="dark"] .bg-sand,
+html[data-theme="dark"] [class*="bg-sand"] {
+  background-color: #1e2436 !important;
+}
+
+/* Borders */
+html[data-theme="dark"] .border-beige,
+html[data-theme="dark"] [class*="border-beige"] {
+  border-color: #2a3045 !important;
+}
+
+/* Text */
+html[data-theme="dark"] .text-text-primary,
+html[data-theme="dark"] p,
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3 {
+  color: #e8eaf0 !important;
+}
+
+html[data-theme="dark"] .text-text-secondary {
+  color: #9aa3b8 !important;
+}
+
+html[data-theme="dark"] .text-text-muted {
+  color: #6b7490 !important;
+}
+
+/* Inputs */
+html[data-theme="dark"] input,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] select {
+  background-color: #1e2436 !important;
+  color: #e8eaf0 !important;
+  border-color: #2a3045 !important;
+}
+
+/* Shadows */
+html[data-theme="dark"] .shadow-soft,
+html[data-theme="dark"] [class*="shadow"] {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ─── Font sizes ─────────────────────────────────────────────── */
+html[data-font-size="small"]  { font-size: 14px; }
+html[data-font-size="large"]  { font-size: 18px; }
+
 /* Focus visible for accessibility */
 :focus-visible {
   @apply outline-2 outline-sage outline-offset-2;

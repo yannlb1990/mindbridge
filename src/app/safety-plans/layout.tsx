@@ -1,20 +1,33 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Loader2 } from 'lucide-react';
 
 export default function SafetyPlansLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { user, isLoading, checkAuth } = useAuthStore();
+  const user = useAuthStore((state) => state.user);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { checkAuth(); }, [checkAuth]);
-  useEffect(() => { if (!isLoading && !user) router.push('/auth/login'); }, [isLoading, user, router]);
+  useEffect(() => { setMounted(true); }, []);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-cream"><Loader2 className="w-8 h-8 animate-spin text-sage" /></div>;
-  if (!user) return null;
+  useEffect(() => {
+    if (mounted && hasHydrated && !user) window.location.href = '/auth/login';
+  }, [mounted, hasHydrated, user]);
 
-  return <div className="flex min-h-screen bg-cream"><Sidebar /><main className="flex-1 overflow-auto">{children}</main></div>;
+  if (!mounted || !hasHydrated || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <Loader2 className="w-8 h-8 animate-spin text-sage" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen bg-cream">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">{children}</main>
+    </div>
+  );
 }
