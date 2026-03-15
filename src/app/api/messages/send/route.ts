@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// Lazy — only instantiated at request time so build never throws when env vars are absent
+function getSupabase(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error('Supabase environment variables are not configured.');
+  return createClient(url, key);
+}
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'notifications@mindbridge.com.au';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001';
 
@@ -25,6 +27,9 @@ function calculateAge(dateOfBirth: string): number {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
+    const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
     const body = await request.json();
     const { conversation_id, sender_id, sender_type, content, client_id, clinician_id } = body;
 
@@ -69,11 +74,9 @@ export async function POST(request: NextRequest) {
     // --- Email notification logic ---
     if (resend) {
       if (sender_type === 'clinician') {
-        // Clinician sent a message → notify client IF they are 18+
-        await notifyClient(convId, content);
+        await notifyClient(supabase, resend, convId, content);
       } else if (sender_type === 'client') {
-        // Client sent a message → always notify clinician
-        await notifyClinicianOfClientMessage(convId, content);
+        await notifyClinicianOfClientMessage(supabase, resend, convId, content);
       }
     }
 
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function notifyClient(conversationId: string, messageContent: string) {
+async function notifyClient(supabase: SupabaseClient, resend: Resend, conversationId: string, messageContent: string) {
   // Get conversation + client profile (need date_of_birth for age check)
   const { data: conv } = await supabase
     .from('conversations')
@@ -155,7 +158,7 @@ async function notifyClient(conversationId: string, messageContent: string) {
   });
 }
 
-async function notifyClinicianOfClientMessage(conversationId: string, messageContent: string) {
+async function notifyClinicianOfClientMessage(supabase: SupabaseClient, resend: Resend, conversationId: string, messageContent: string) {
   const { data: conv } = await supabase
     .from('conversations')
     .select(`
