@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { useAuthStore } from '@/stores/authStore';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
 import {
   User,
   Building,
@@ -69,8 +70,36 @@ export default function SettingsPage() {
   const { user, clinicianProfile } = useAuthStore();
   const [activeSection, setActiveSection] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [expandedHelp, setExpandedHelp] = useState<number | null>(null);
   const [comingSoonToast, setComingSoonToast] = useState('');
+
+  // Controlled profile state
+  const [firstName, setFirstName] = useState(user?.first_name ?? '');
+  const [lastName, setLastName] = useState(user?.last_name ?? '');
+  const [preferredName, setPreferredName] = useState(user?.preferred_name ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [pronouns, setPronouns] = useState(user?.pronouns ?? '');
+  const [credentials, setCredentials] = useState(clinicianProfile?.credentials ?? '');
+  const [registrationNumber, setRegistrationNumber] = useState(clinicianProfile?.registration_number ?? '');
+
+  // Sync state when user/clinicianProfile loads from store
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.first_name ?? '');
+      setLastName(user.last_name ?? '');
+      setPreferredName(user.preferred_name ?? '');
+      setPhone(user.phone ?? '');
+      setPronouns(user.pronouns ?? '');
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (clinicianProfile) {
+      setCredentials(clinicianProfile.credentials ?? '');
+      setRegistrationNumber(clinicianProfile.registration_number ?? '');
+    }
+  }, [clinicianProfile]);
 
   const showComingSoon = (label: string) => {
     setComingSoonToast(label);
@@ -141,13 +170,65 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
-    // Simulate save
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSaving(false);
+
+    if (isEffectiveDemo(user?.id)) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      setIsSaving(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2200);
+      return;
+    }
+
+    if (!user) {
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      const { error: userError } = await supabase
+        .from('users')
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          preferred_name: preferredName || null,
+          phone: phone || null,
+          pronouns: pronouns || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (userError) throw userError;
+
+      if (clinicianProfile) {
+        const { error: clinicianError } = await supabase
+          .from('clinician_profiles')
+          .update({
+            credentials: credentials || null,
+            registration_number: registrationNumber || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+
+        if (clinicianError) throw clinicianError;
+      }
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2200);
+    } catch (err) {
+      console.error('Failed to save profile:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="min-h-screen">
+      {saveSuccess && (
+        <div className="fixed bottom-6 right-6 z-50 bg-text-primary text-white px-5 py-3 rounded-xl shadow-large flex items-center gap-2">
+          <Check className="w-4 h-4 text-sage" />
+          Changes saved
+        </div>
+      )}
       {comingSoonToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-text-primary text-white px-5 py-3 rounded-xl shadow-large flex items-center gap-2">
           <Check className="w-4 h-4 text-sage" />
@@ -211,17 +292,20 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-2 gap-4">
                       <Input
                         label="First Name"
-                        defaultValue={user?.first_name}
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
                       />
                       <Input
                         label="Last Name"
-                        defaultValue={user?.last_name}
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
                       />
                     </div>
 
                     <Input
                       label="Preferred Name"
-                      defaultValue={user?.preferred_name || ''}
+                      value={preferredName}
+                      onChange={(e) => setPreferredName(e.target.value)}
                       hint="How you'd like to be addressed"
                     />
 
@@ -229,12 +313,14 @@ export default function SettingsPage() {
                       label="Email"
                       type="email"
                       defaultValue={user?.email}
+                      disabled
                     />
 
                     <Input
                       label="Phone"
                       type="tel"
-                      defaultValue={user?.phone || ''}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                     />
 
                     <div>
@@ -242,7 +328,8 @@ export default function SettingsPage() {
                         Pronouns
                       </label>
                       <select
-                        defaultValue={user?.pronouns || ''}
+                        value={pronouns}
+                        onChange={(e) => setPronouns(e.target.value)}
                         className="w-full px-4 py-2.5 border border-beige rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-sage"
                       >
                         <option value="">Prefer not to say</option>
@@ -263,14 +350,16 @@ export default function SettingsPage() {
                   <CardContent className="space-y-4">
                     <Input
                       label="Professional Title"
-                      defaultValue={clinicianProfile?.credentials || ''}
+                      value={credentials}
+                      onChange={(e) => setCredentials(e.target.value)}
                       placeholder="e.g., Clinical Psychologist"
                     />
 
                     <div className="grid grid-cols-2 gap-4">
                       <Input
                         label="Registration Number"
-                        defaultValue={clinicianProfile?.registration_number || ''}
+                        value={registrationNumber}
+                        onChange={(e) => setRegistrationNumber(e.target.value)}
                       />
                       <div>
                         <label className="block text-sm font-medium text-text-secondary mb-1.5">

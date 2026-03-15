@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, isDemoMode } from '@/lib/supabase';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
 export interface HomeworkAssignment {
@@ -83,7 +83,7 @@ export function useHomework() {
   const fetchHomework = useCallback(async () => {
     if (!user) return;
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setHomework(DEMO_HOMEWORK);
       setIsLoading(false);
       return;
@@ -121,7 +121,7 @@ export function useHomework() {
   const createHomework = async (data: CreateHomeworkData): Promise<{ success: boolean; error?: string; homeworkId?: string }> => {
     if (!user) return { success: false, error: 'Not authenticated' };
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       const newHomework: HomeworkAssignment = {
         id: `hw-${Date.now()}`,
         clinician_id: user.id,
@@ -167,7 +167,7 @@ export function useHomework() {
     status: HomeworkAssignment['status'],
     feedback?: string
   ): Promise<{ success: boolean; error?: string }> => {
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setHomework((prev) =>
         prev.map((hw) =>
           hw.id === homeworkId
@@ -200,7 +200,7 @@ export function useHomework() {
     homeworkId: string,
     feedback: string
   ): Promise<{ success: boolean; error?: string }> => {
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setHomework((prev) =>
         prev.map((hw) =>
           hw.id === homeworkId

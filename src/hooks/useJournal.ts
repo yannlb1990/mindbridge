@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 
 export interface JournalEntry {
   id: string;
@@ -41,15 +43,59 @@ const DEMO_ENTRIES: JournalEntry[] = [
     id: 'j4',
     created_at: ago(11),
     content:
-      'Didn\'t sleep well last night. Kept overthinking things. Made a list of worries like Dr. Mitchell suggested — helped a bit to get them out of my head.',
+      "Didn't sleep well last night. Kept overthinking things. Made a list of worries like Dr. Mitchell suggested — helped a bit to get them out of my head.",
     mood: 3,
   },
 ];
 
 export function useJournal() {
-  const [entries, setEntries] = useState<JournalEntry[]>(DEMO_ENTRIES);
+  const { user } = useAuthStore();
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const addEntry = (content: string, title?: string, mood?: number): JournalEntry => {
+  const fetchEntries = useCallback(async () => {
+    if (isEffectiveDemo(user?.id)) {
+      setEntries(DEMO_ENTRIES);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('client_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setEntries(
+        (data || []).map((row: any) => ({
+          id: row.id,
+          created_at: row.created_at,
+          title: row.title ?? undefined,
+          content: row.content,
+          mood: row.mood ?? undefined,
+        }))
+      );
+    } catch (err) {
+      console.error('Failed to fetch journal entries:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
+
+  const addEntry = async (content: string, title?: string, mood?: number): Promise<JournalEntry> => {
     const entry: JournalEntry = {
       id: `j-${Date.now()}`,
       created_at: new Date().toISOString(),
@@ -57,13 +103,55 @@ export function useJournal() {
       content,
       mood,
     };
-    setEntries((prev) => [entry, ...prev]);
-    return entry;
+
+    if (isEffectiveDemo(user?.id)) {
+      setEntries((prev) => [entry, ...prev]);
+      return entry;
+    }
+
+    if (!user) return entry;
+
+    try {
+      const { data, error } = await supabase
+        .from('journal_entries')
+        .insert({
+          client_id: user.id,
+          title: title?.trim() || null,
+          content,
+          mood: mood ?? null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const saved: JournalEntry = {
+        id: data.id,
+        created_at: data.created_at,
+        title: data.title ?? undefined,
+        content: data.content,
+        mood: data.mood ?? undefined,
+      };
+      setEntries((prev) => [saved, ...prev]);
+      return saved;
+    } catch (err) {
+      console.error('Failed to save journal entry:', err);
+      setEntries((prev) => [entry, ...prev]);
+      return entry;
+    }
   };
 
-  const deleteEntry = (id: string) => {
+  const deleteEntry = async (id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
+
+    if (isEffectiveDemo(user?.id) || !user) return;
+
+    try {
+      await supabase.from('journal_entries').delete().eq('id', id);
+    } catch (err) {
+      console.error('Failed to delete journal entry:', err);
+    }
   };
 
-  return { entries, addEntry, deleteEntry };
+  return { entries, addEntry, deleteEntry, isLoading };
 }

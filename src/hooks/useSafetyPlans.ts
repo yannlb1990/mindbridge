@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, isDemoMode } from '@/lib/supabase';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
 export interface SafetyPlan {
@@ -121,7 +121,7 @@ export function useSafetyPlans() {
   const fetchSafetyPlans = useCallback(async () => {
     if (!user) return;
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setSafetyPlans(DEMO_SAFETY_PLANS);
       setIsLoading(false);
       return;
@@ -161,7 +161,7 @@ export function useSafetyPlans() {
 
     const crisisResources = data.crisisResources || AUSTRALIAN_CRISIS_RESOURCES.slice(0, 5);
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       const newPlan: SafetyPlan = {
         id: `sp-${Date.now()}`,
         client_id: data.clientId,
@@ -213,7 +213,7 @@ export function useSafetyPlans() {
   };
 
   const updateSafetyPlan = async (planId: string, data: Partial<CreateSafetyPlanData>): Promise<{ success: boolean; error?: string }> => {
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setSafetyPlans((prev) =>
         prev.map((sp) =>
           sp.id === planId
@@ -258,7 +258,7 @@ export function useSafetyPlans() {
   };
 
   const markReviewed = async (planId: string, nextReviewDate?: string): Promise<{ success: boolean; error?: string }> => {
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setSafetyPlans((prev) =>
         prev.map((sp) =>
           sp.id === planId

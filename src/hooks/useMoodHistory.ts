@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 
 export interface MoodEntry {
   id: string;
@@ -40,16 +42,91 @@ function buildDemoEntries(): MoodEntry[] {
 }
 
 export function useMoodHistory() {
-  const [entries, setEntries] = useState<MoodEntry[]>(buildDemoEntries);
+  const { user } = useAuthStore();
+  const [entries, setEntries] = useState<MoodEntry[]>(() =>
+    isEffectiveDemo(user?.id) ? buildDemoEntries() : []
+  );
+  const [isLoading, setIsLoading] = useState(!isEffectiveDemo(user?.id));
 
-  const addEntry = (value: number, note?: string) => {
+  const fetchEntries = useCallback(async () => {
+    if (isEffectiveDemo(user?.id)) {
+      setEntries(buildDemoEntries());
+      setIsLoading(false);
+      return;
+    }
+
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('mood_entries')
+        .select('*')
+        .eq('client_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (error) throw error;
+
+      setEntries(
+        (data || []).map((row: any) => ({
+          id: row.id,
+          date: row.created_at,
+          value: row.rating,
+          note: row.notes ?? undefined,
+        }))
+      );
+    } catch (err) {
+      console.error('Failed to fetch mood entries:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchEntries();
+  }, [fetchEntries]);
+
+  const addEntry = async (value: number, note?: string) => {
     const entry: MoodEntry = {
       id: `mood-${Date.now()}`,
       date: new Date().toISOString(),
       value,
       note,
     };
+
     setEntries((prev) => [entry, ...prev]);
+
+    if (isEffectiveDemo(user?.id) || !user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('mood_entries')
+        .insert({
+          client_id: user.id,
+          rating: value,
+          notes: note ?? null,
+          shared_with_clinician: false,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Replace the optimistic entry with the persisted one
+      setEntries((prev) =>
+        prev.map((e) =>
+          e.id === entry.id
+            ? { id: data.id, date: data.created_at, value: data.rating, note: data.notes ?? undefined }
+            : e
+        )
+      );
+    } catch (err) {
+      console.error('Failed to save mood entry:', err);
+    }
   };
 
   // Consecutive-day streak (today or yesterday counts as start)
@@ -94,5 +171,5 @@ export function useMoodHistory() {
 
   const totalEntries = entries.length;
 
-  return { entries, addEntry, streak, last7Days, avgThisWeek, totalEntries };
+  return { entries, addEntry, streak, last7Days, avgThisWeek, totalEntries, isLoading };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { supabase, isDemoMode } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
 export interface EmotionSession {
@@ -84,7 +84,7 @@ export function useEmotionSessions() {
 
     setSessions((prev) => [newSession, ...prev]);
 
-    if (!isDemoMode && clientProfile?.id) {
+    if (clientProfile?.id && !clientProfile.id.startsWith('demo-')) {
       setSaving(true);
       try {
         const notesPayload = JSON.stringify({

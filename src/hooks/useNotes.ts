@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, isDemoMode } from '@/lib/supabase';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
 export interface ClinicalNote {
@@ -71,7 +71,7 @@ export function useNotes() {
   const fetchNotes = useCallback(async () => {
     if (!user) return;
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       const demoNotes: ClinicalNote[] = [
         {
           id: 'note-1',
@@ -164,7 +164,7 @@ export function useNotes() {
   const createNote = async (data: CreateNoteData): Promise<{ success: boolean; error?: string; noteId?: string }> => {
     if (!user) return { success: false, error: 'Not authenticated' };
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       const newNote: ClinicalNote = {
         id: `note-${Date.now()}`,
         session_id: data.sessionId,
@@ -209,7 +209,7 @@ export function useNotes() {
   };
 
   const updateNote = async (noteId: string, content: Record<string, any>): Promise<{ success: boolean; error?: string }> => {
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setNotes((prev) =>
         prev.map((n) =>
           n.id === noteId
@@ -238,7 +238,7 @@ export function useNotes() {
   const signNote = async (noteId: string): Promise<{ success: boolean; error?: string }> => {
     const signedAt = new Date().toISOString();
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setNotes((prev) =>
         prev.map((n) =>
           n.id === noteId
