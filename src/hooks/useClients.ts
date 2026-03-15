@@ -84,8 +84,9 @@ interface CreateClientData {
   notes?: string;
 }
 
-// Demo clients
-const DEMO_CLIENTS: Client[] = [
+// Module-level shared demo clients store (same pattern as useSessions)
+// All useClients instances AND useDemoData share this so edits propagate everywhere
+const DEMO_CLIENTS_INITIAL: Client[] = [
   {
     id: 'client-1',
     user_id: 'user-1',
@@ -213,6 +214,26 @@ const DEMO_CLIENTS: Client[] = [
   },
 ];
 
+// Shared mutable store + listeners so all components stay in sync
+let demoClientsStore: Client[] = [...DEMO_CLIENTS_INITIAL];
+let demoClientsListeners: Array<(clients: Client[]) => void> = [];
+
+function notifyDemoClients(clients: Client[]) {
+  demoClientsStore = clients;
+  demoClientsListeners.forEach((fn) => fn(clients));
+}
+
+export function subscribeToDemoClients(fn: (clients: Client[]) => void) {
+  demoClientsListeners.push(fn);
+  return () => {
+    demoClientsListeners = demoClientsListeners.filter((f) => f !== fn);
+  };
+}
+
+export function getDemoClients(): Client[] {
+  return demoClientsStore;
+}
+
 export function useClients() {
   const { user } = useAuthStore();
   const [clients, setClients] = useState<Client[]>([]);
@@ -223,7 +244,7 @@ export function useClients() {
     if (!user) return;
 
     if (isEffectiveDemo(user.id)) {
-      setClients(DEMO_CLIENTS);
+      setClients(demoClientsStore);
       setIsLoading(false);
       return;
     }
@@ -356,13 +377,11 @@ export function useClients() {
 
   const updateClient = async (clientId: string, data: Partial<Client>): Promise<{ success: boolean; error?: string }> => {
     if (isEffectiveDemo(user?.id)) {
-      setClients((prev) =>
-        prev.map((c) =>
-          c.id === clientId
-            ? { ...c, ...data }
-            : c
-        )
+      const updated = demoClientsStore.map((c) =>
+        c.id === clientId ? { ...c, ...data } : c
       );
+      notifyDemoClients(updated);
+      setClients(updated);
       return { success: true };
     }
 
@@ -445,6 +464,12 @@ export function useClients() {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  // Keep in sync when another component updates demo clients
+  useEffect(() => {
+    if (!user || !isEffectiveDemo(user.id)) return;
+    return subscribeToDemoClients((updated) => setClients(updated));
+  }, [user]);
 
   return {
     clients,

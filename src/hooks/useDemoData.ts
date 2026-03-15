@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { subscribeToDemoClients, getDemoClients } from './useClients';
 import type { ClientProfile, HomeworkStatus, NoteFormat, RiskLevel } from '@/types/database';
 
 interface DemoClient extends Partial<ClientProfile> {
@@ -772,7 +773,23 @@ const generateDemoAlerts = (clients: DemoClient[], homework: DemoHomework[]): De
 };
 
 export function useDemoData() {
-  const clients = useMemo(() => generateDemoClients(), []);
+  // Track version so we re-run memos when a client is edited
+  const [clientVersion, setClientVersion] = useState(0);
+  useEffect(() => {
+    return subscribeToDemoClients(() => setClientVersion((v) => v + 1));
+  }, []);
+
+  const clients = useMemo(() => {
+    // Merge live edits (names, etc.) from the shared store into generated demo clients
+    const live = getDemoClients();
+    const liveMap = new Map(live.map((c) => [c.id, c]));
+    return generateDemoClients().map((c) => {
+      const liveClient = liveMap.get(c.id);
+      if (!liveClient) return c;
+      return { ...c, first_name: liveClient.first_name, last_name: liveClient.last_name };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientVersion]);
   const sessions = useMemo(() => generateDemoSessions(clients), [clients]);
   const notes = useMemo(() => generateDemoNotes(clients, sessions), [clients, sessions]);
   const homework = useMemo(() => generateDemoHomework(clients), [clients]);
