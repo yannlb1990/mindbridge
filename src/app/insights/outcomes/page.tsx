@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import { demoOutcomeDashboards } from '@/lib/ai/demoData';
-import { useDemoData } from '@/hooks/useDemoData';
+import { useClients } from '@/hooks/useClients';
+import { useAuthStore } from '@/stores/authStore';
+import { isEffectiveDemo } from '@/lib/supabase';
 import { OutcomeDashboard, TreatmentGoal } from '@/lib/ai/types';
 import {
   TrendingUp,
@@ -36,10 +38,52 @@ import {
 } from 'lucide-react';
 
 export default function OutcomeDashboardPage() {
-  const { clients } = useDemoData();
-  const [selectedDashboard, setSelectedDashboard] = useState<OutcomeDashboard | null>(demoOutcomeDashboards[0]);
+  const { user } = useAuthStore();
+  const demoMode = isEffectiveDemo(user?.id);
+  const { clients: realClients } = useClients();
+
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedDashboard, setSelectedDashboard] = useState<OutcomeDashboard | null>(demoMode ? demoOutcomeDashboards[0] : null);
   const [selectedAssessment, setSelectedAssessment] = useState<string>('all');
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [shareToast, setShareToast] = useState(false);
+
+  useEffect(() => {
+    if (demoMode) {
+      setSelectedClientId(demoOutcomeDashboards[0]?.clientId || '');
+    } else if (realClients.length > 0 && !selectedClientId) {
+      setSelectedClientId(realClients[0].id);
+    }
+  }, [demoMode, realClients, selectedClientId]);
+
+  const loadDashboard = useCallback(async (clientId: string) => {
+    if (demoMode) {
+      const d = demoOutcomeDashboards.find(d => d.clientId === clientId);
+      setSelectedDashboard(d || demoOutcomeDashboards[0]);
+      return;
+    }
+    setLoading(true);
+    setLoadError(null);
+    setSelectedDashboard(null);
+    try {
+      const res = await fetch(`/api/insights/outcomes?clientId=${clientId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load outcomes');
+      setSelectedDashboard(data);
+    } catch (e: any) {
+      setLoadError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [demoMode]);
+
+  useEffect(() => {
+    if (selectedClientId && !selectedDashboard && !loading) {
+      loadDashboard(selectedClientId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClientId]);
 
   const handleShare = useCallback(() => {
     const url = window.location.href;
@@ -127,15 +171,15 @@ export default function OutcomeDashboardPage() {
                   View Outcomes For
                 </label>
                 <Select
-                  value={selectedDashboard?.clientId || ''}
+                  value={selectedClientId}
                   onChange={(e) => {
-                    const dashboard = demoOutcomeDashboards.find(d => d.clientId === e.target.value);
-                    setSelectedDashboard(dashboard || null);
+                    setSelectedClientId(e.target.value);
+                    loadDashboard(e.target.value);
                   }}
-                  options={demoOutcomeDashboards.map(d => ({
-                    value: d.clientId,
-                    label: d.clientName,
-                  }))}
+                  options={demoMode
+                    ? demoOutcomeDashboards.map(d => ({ value: d.clientId, label: d.clientName }))
+                    : realClients.map(c => ({ value: c.id, label: `${c.first_name} ${c.last_name}` }))
+                  }
                 />
               </div>
 
@@ -158,6 +202,29 @@ export default function OutcomeDashboardPage() {
             </div>
           </CardContent>
         </Card>
+
+        {loading && (
+          <Card>
+            <CardContent className="pt-8 pb-8 flex items-center justify-center gap-3 text-text-muted">
+              <Activity className="w-5 h-5 animate-pulse text-sage" />
+              <span>Loading outcome data…</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {loadError && (
+          <Card className="border-error/30 bg-error/5">
+            <CardContent className="pt-4 pb-4 text-sm text-error">{loadError}</CardContent>
+          </Card>
+        )}
+
+        {!loading && !selectedDashboard && !loadError && selectedClientId && (
+          <Card className="border-dashed">
+            <CardContent className="pt-8 pb-8 text-center text-text-muted text-sm">
+              No assessment data found for this client yet. Administer a PHQ-9, GAD-7, K10, or DASS-21 to start tracking outcomes.
+            </CardContent>
+          </Card>
+        )}
 
         {selectedDashboard && (
           <>

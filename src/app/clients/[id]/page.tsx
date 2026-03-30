@@ -13,6 +13,14 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Modal } from '@/components/ui/Modal';
 import { useDemoData } from '@/hooks/useDemoData';
 import { useClients, Client } from '@/hooks/useClients';
+import { useGoals } from '@/hooks/useGoals';
+import { useSessions } from '@/hooks/useSessions';
+import { useNotes } from '@/hooks/useNotes';
+import { useHomework } from '@/hooks/useHomework';
+import { useSafetyPlans } from '@/hooks/useSafetyPlans';
+import { useClientMoodEntries } from '@/hooks/useClientMoodEntries';
+import { useClientAssessments } from '@/hooks/useClientAssessments';
+import { isEffectiveDemo } from '@/lib/supabase';
 import { EditClientModal } from '@/components/clients/EditClientModal';
 import { calculateAge, formatDate, getMoodEmoji, getMoodLabel } from '@/lib/utils';
 import {
@@ -65,20 +73,22 @@ import {
 
 type TabType = 'overview' | 'notes' | 'homework' | 'progress' | 'assessments' | 'goals' | 'billing' | 'documents' | 'crisis' | 'emotion';
 
-// Types for Goals
+// Types for Goals — snake_case to match Supabase / useGoals hook
 interface TreatmentGoal {
   id: string;
+  client_id: string;
+  clinician_id: string;
   title: string;
   description: string;
   category: 'symptom_reduction' | 'behavioral' | 'cognitive' | 'interpersonal' | 'functional' | 'other';
   status: 'active' | 'achieved' | 'paused' | 'discontinued';
   priority: 'high' | 'medium' | 'low';
-  targetDate?: string;
-  progress: number; // 0-100
+  target_date?: string;
+  progress: number;
   milestones: GoalMilestone[];
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface GoalMilestone {
@@ -118,28 +128,45 @@ export default function ClientDetailPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteSent, setInviteSent] = useState(false);
   const { clients: hookClients, fetchClients } = useClients();
+  const { sessions: realSessions } = useSessions();
+  const { notes: realNotes } = useNotes();
+  const { homework: realHomework } = useHomework();
+  const { getClientSafetyPlan } = useSafetyPlans();
   const {
     clients: demoClients,
-    sessions,
-    notes,
-    homework,
-    assessments,
-    moodEntries,
+    moodEntries: demoMoodEntries,
+    assessments: demoAssessments,
     crisisEvents,
-    safetyPlans
+    safetyPlans: demoSafetyPlans,
   } = useDemoData();
+
+  const clientIdParam = params.id as string;
+
+  // Real hooks for per-client mood entries and assessments
+  const { entries: realMoodEntries } = useClientMoodEntries(clientIdParam);
+  const { assessments: realAssessments } = useClientAssessments(clientIdParam);
 
   // Use hook clients if available, otherwise demo
   const clients = hookClients.length > 0 ? hookClients : demoClients;
   const client = clients.find((c) => c.id === params.id) as Client | undefined;
-  const clientSessions = sessions.filter((s) => s.client_id === params.id);
-  const clientNotes = notes.filter((n) => n.client_id === params.id);
-  const clientHomework = homework.filter((h) => h.client_id === params.id);
-  const clientAssessments = assessments.filter((a) => a.client_id === params.id);
-  const clientMoodEntries = moodEntries.filter((m) => m.client_id === params.id);
+  const clientSessions = realSessions.filter((s) => s.client_id === params.id);
+  const clientNotes = realNotes.filter((n) => n.client_id === params.id);
+  const clientHomework = realHomework.filter((h) => h.client_id === params.id);
+
+  // For mood entries and assessments: use real data for non-demo, demo data as fallback
+  const isCurrentDemo = isEffectiveDemo(undefined);
+  const clientMoodEntries = isCurrentDemo
+    ? demoMoodEntries.filter((m) => m.client_id === params.id)
+    : realMoodEntries;
+  const clientAssessments = isCurrentDemo
+    ? demoAssessments.filter((a) => a.client_id === params.id)
+    : realAssessments;
+
   const clientCrisisEvents = crisisEvents.filter((c) => c.client_id === params.id);
-  const clientSafetyPlan = safetyPlans.find((s) => s.client_id === params.id);
+  const clientSafetyPlan = getClientSafetyPlan(clientIdParam) ?? demoSafetyPlans.find((s) => s.client_id === params.id);
 
   // Emotion Coach sessions — mood_entries with type:'emotion_coach' in notes
   const emotionSessions = clientMoodEntries.filter((e) => {
@@ -150,12 +177,13 @@ export default function ClientDetailPage() {
   const [goals, setGoals] = useState<TreatmentGoal[]>([
     {
       id: 'goal-1',
+      client_id: 'demo', clinician_id: 'demo',
       title: 'Reduce anxiety symptoms',
       description: 'Decrease frequency and intensity of anxiety episodes through CBT techniques',
       category: 'symptom_reduction',
       status: 'active',
       priority: 'high',
-      targetDate: '2025-06-30',
+      target_date: '2025-06-30',
       progress: 65,
       milestones: [
         { id: 'm1', title: 'Learn to identify anxiety triggers', completed: true, completedAt: '2025-01-15' },
@@ -163,27 +191,48 @@ export default function ClientDetailPage() {
         { id: 'm3', title: 'Successfully use coping skills in 3 situations', completed: false },
         { id: 'm4', title: 'Reduce avoidance behaviors by 50%', completed: false },
       ],
-      createdAt: '2024-12-01',
-      updatedAt: '2025-02-10',
+      created_at: '2024-12-01',
+      updated_at: '2025-02-10',
     },
     {
       id: 'goal-2',
+      client_id: 'demo', clinician_id: 'demo',
       title: 'Improve social connections',
       description: 'Build and maintain meaningful relationships with peers',
       category: 'interpersonal',
       status: 'active',
       priority: 'medium',
-      targetDate: '2025-08-31',
+      target_date: '2025-08-31',
       progress: 30,
       milestones: [
         { id: 'm5', title: 'Identify 3 potential social activities', completed: true, completedAt: '2025-02-01' },
         { id: 'm6', title: 'Attend one social event per fortnight', completed: false },
         { id: 'm7', title: 'Initiate conversation with new person', completed: false },
       ],
-      createdAt: '2025-01-10',
-      updatedAt: '2025-02-05',
+      created_at: '2025-01-10',
+      updated_at: '2025-02-05',
     },
   ]);
+
+  // Real goals from Supabase (for non-demo users)
+  const {
+    goals: dbGoals,
+    setGoals: setDbGoals,
+    fetchGoals,
+    createGoal: dbCreateGoal,
+    toggleMilestone: dbToggleMilestone,
+    updateGoalProgress: dbUpdateGoalProgress,
+    deleteGoal: dbDeleteGoal,
+  } = useGoals(clientIdParam);
+
+  // Fetch real goals on mount
+  useEffect(() => {
+    fetchGoals();
+  }, [fetchGoals]);
+
+  // For real users, replace local goals state with DB data
+  const displayGoals = !isCurrentDemo && dbGoals.length > 0 ? dbGoals : goals;
+  const displaySetGoals = !isCurrentDemo ? setDbGoals : setGoals;
 
   const [documents, setDocuments] = useState<ClientDocument[]>([
     {
@@ -283,10 +332,33 @@ export default function ClientDetailPage() {
     );
   }
 
+  const sendOnboardingInvite = async () => {
+    if (!client?.email) return;
+    setSendingInvite(true);
+    try {
+      const res = await fetch('/api/onboarding/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: client.id,
+          email: client.email,
+          firstName: client.first_name,
+          clinicianName: 'Your clinician',
+          clinicianId: client.clinician_id,
+        }),
+      });
+      if (res.ok) {
+        setInviteSent(true);
+      }
+    } finally {
+      setSendingInvite(false);
+    }
+  };
+
   const tabs: { id: TabType; label: string; icon: React.ReactNode; count?: number }[] = [
     { id: 'overview', label: 'Overview', icon: <User className="w-4 h-4" /> },
     { id: 'notes', label: 'Notes', icon: <FileText className="w-4 h-4" />, count: clientNotes.length },
-    { id: 'goals', label: 'Goals', icon: <Target className="w-4 h-4" />, count: goals.filter(g => g.status === 'active').length },
+    { id: 'goals', label: 'Goals', icon: <Target className="w-4 h-4" />, count: displayGoals.filter(g => g.status === 'active').length },
     { id: 'homework', label: 'Homework', icon: <BookOpen className="w-4 h-4" />, count: clientHomework.filter(h => h.status !== 'completed').length },
     { id: 'progress', label: 'Progress', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'assessments', label: 'Assessments', icon: <ClipboardList className="w-4 h-4" />, count: clientAssessments.length },
@@ -302,6 +374,16 @@ export default function ClientDetailPage() {
         title=""
         actions={
           <div className="flex gap-2">
+            {!client.onboarding_completed && (
+              <Button
+                variant="secondary"
+                leftIcon={sendingInvite ? <Loader2 className="w-4 h-4 animate-spin" /> : inviteSent ? <CheckCircle className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                onClick={sendOnboardingInvite}
+                disabled={sendingInvite || inviteSent || !client.email}
+              >
+                {inviteSent ? 'Invite sent' : 'Send Onboarding'}
+              </Button>
+            )}
             <Button variant="secondary" leftIcon={<Calendar className="w-4 h-4" />}>
               Schedule Session
             </Button>
@@ -423,28 +505,36 @@ export default function ClientDetailPage() {
         {activeTab === 'overview' && (
           <OverviewTab
             client={client}
-            sessions={clientSessions}
+            sessions={clientSessions as any}
             moodEntries={clientMoodEntries}
             assessments={clientAssessments}
-            goals={goals}
+            goals={displayGoals}
             invoices={invoices}
           />
         )}
         {activeTab === 'notes' && (
-          <NotesTab notes={clientNotes} sessions={clientSessions} clientId={client.id} />
+          <NotesTab notes={clientNotes as any} sessions={clientSessions as any} clientId={client.id} />
         )}
         {activeTab === 'goals' && (
-          <GoalsTab goals={goals} setGoals={setGoals} />
+          <GoalsTab
+            goals={displayGoals}
+            setGoals={displaySetGoals as React.Dispatch<React.SetStateAction<TreatmentGoal[]>>}
+            clientId={clientIdParam}
+            onCreateGoal={!isCurrentDemo ? dbCreateGoal : undefined}
+            onToggleMilestone={!isCurrentDemo ? dbToggleMilestone : undefined}
+            onUpdateGoalProgress={!isCurrentDemo ? dbUpdateGoalProgress : undefined}
+            onDeleteGoal={!isCurrentDemo ? dbDeleteGoal : undefined}
+          />
         )}
         {activeTab === 'homework' && (
-          <HomeworkTab homework={clientHomework} />
+          <HomeworkTab homework={clientHomework as any} />
         )}
         {activeTab === 'progress' && (
           <ProgressTab
             moodEntries={clientMoodEntries}
             assessments={clientAssessments}
             client={client}
-            goals={goals}
+            goals={displayGoals}
           />
         )}
         {activeTab === 'assessments' && (
@@ -459,7 +549,7 @@ export default function ClientDetailPage() {
         {activeTab === 'crisis' && (
           <CrisisTab
             crisisEvents={clientCrisisEvents}
-            safetyPlan={clientSafetyPlan}
+            safetyPlan={clientSafetyPlan as any}
             client={client}
           />
         )}
@@ -796,12 +886,25 @@ function OverviewTab({
 function GoalsTab({
   goals,
   setGoals,
+  clientId,
+  onCreateGoal,
+  onToggleMilestone,
+  onUpdateGoalProgress,
+  onDeleteGoal,
 }: {
   goals: TreatmentGoal[];
   setGoals: React.Dispatch<React.SetStateAction<TreatmentGoal[]>>;
+  clientId: string;
+  onCreateGoal?: (data: { clientId: string; title: string; description: string; category: TreatmentGoal['category']; priority: TreatmentGoal['priority']; targetDate?: string; milestones?: string[] }) => Promise<boolean>;
+  onToggleMilestone?: (goalId: string, milestoneId: string) => Promise<boolean>;
+  onUpdateGoalProgress?: (goalId: string, progress: number) => Promise<boolean>;
+  onDeleteGoal?: (goalId: string) => Promise<boolean>;
 }) {
   const [isAddGoalOpen, setIsAddGoalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<TreatmentGoal | null>(null);
+  const [addForm, setAddForm] = useState({ title: '', description: '', category: 'symptom_reduction' as TreatmentGoal['category'], priority: 'medium' as TreatmentGoal['priority'], targetDate: '', milestoneText: '' });
+  const [milestoneList, setMilestoneList] = useState<string[]>([]);
+  const [isSavingGoal, setIsSavingGoal] = useState(false);
 
   const categoryLabels: Record<string, string> = {
     symptom_reduction: 'Symptom Reduction',
@@ -822,15 +925,15 @@ function GoalsTab({
   };
 
   const toggleMilestone = (goalId: string, milestoneId: string) => {
+    if (onToggleMilestone) {
+      onToggleMilestone(goalId, milestoneId);
+      return;
+    }
     setGoals(prev => prev.map(goal => {
       if (goal.id === goalId) {
         const updatedMilestones = goal.milestones.map(m => {
           if (m.id === milestoneId) {
-            return {
-              ...m,
-              completed: !m.completed,
-              completedAt: !m.completed ? new Date().toISOString() : undefined,
-            };
+            return { ...m, completed: !m.completed, completedAt: !m.completed ? new Date().toISOString() : undefined };
           }
           return m;
         });
@@ -843,9 +946,51 @@ function GoalsTab({
   };
 
   const updateGoalStatus = (goalId: string, status: TreatmentGoal['status']) => {
+    if (onUpdateGoalProgress && status === 'achieved') {
+      onUpdateGoalProgress(goalId, 100);
+      return;
+    }
     setGoals(prev => prev.map(goal =>
-      goal.id === goalId ? { ...goal, status, updatedAt: new Date().toISOString() } : goal
+      goal.id === goalId ? { ...goal, status, updated_at: new Date().toISOString() } : goal
     ));
+  };
+
+  const handleAddGoal = async () => {
+    if (!addForm.title.trim()) return;
+    setIsSavingGoal(true);
+    if (onCreateGoal) {
+      await onCreateGoal({
+        clientId,
+        title: addForm.title,
+        description: addForm.description,
+        category: addForm.category,
+        priority: addForm.priority,
+        targetDate: addForm.targetDate || undefined,
+        milestones: milestoneList.filter(Boolean),
+      });
+    } else {
+      const newGoal: TreatmentGoal = {
+        id: `goal-${Date.now()}`,
+        client_id: clientId,
+        clinician_id: '',
+        title: addForm.title,
+        description: addForm.description,
+        category: addForm.category,
+        priority: addForm.priority,
+        target_date: addForm.targetDate || undefined,
+        progress: 0,
+        status: 'active',
+        milestones: milestoneList.filter(Boolean).map((t, i) => ({ id: `ms-${Date.now()}-${i}`, title: t, completed: false })),
+        notes: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setGoals(prev => [...prev, newGoal]);
+    }
+    setAddForm({ title: '', description: '', category: 'symptom_reduction', priority: 'medium', targetDate: '', milestoneText: '' });
+    setMilestoneList([]);
+    setIsSavingGoal(false);
+    setIsAddGoalOpen(false);
   };
 
   const activeGoals = goals.filter(g => g.status === 'active');
@@ -949,10 +1094,10 @@ function GoalsTab({
                   </div>
                 </div>
 
-                {goal.targetDate && (
+                {goal.target_date && (
                   <div className="pt-4 border-t border-beige flex items-center justify-between text-sm">
-                    <span className="text-text-muted">Target: {formatDate(goal.targetDate)}</span>
-                    <span className="text-text-muted">Updated: {formatDate(goal.updatedAt)}</span>
+                    <span className="text-text-muted">Target: {formatDate(goal.target_date)}</span>
+                    <span className="text-text-muted">Updated: {formatDate(goal.updated_at)}</span>
                   </div>
                 )}
               </CardContent>
@@ -988,7 +1133,7 @@ function GoalsTab({
                       <CheckCircle className="w-5 h-5 text-success" />
                       <div>
                         <p className="font-medium text-text-primary">{goal.title}</p>
-                        <p className="text-sm text-text-muted">Achieved {formatDate(goal.updatedAt)}</p>
+                        <p className="text-sm text-text-muted">Achieved {formatDate(goal.updated_at)}</p>
                       </div>
                     </div>
                     <Button
@@ -1036,6 +1181,98 @@ function GoalsTab({
           </div>
         </div>
       )}
+
+      {/* Add Goal Modal */}
+      <Modal
+        isOpen={isAddGoalOpen}
+        onClose={() => setIsAddGoalOpen(false)}
+        title="Add Treatment Goal"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setIsAddGoalOpen(false)}>Cancel</Button>
+            <Button
+              variant="primary"
+              leftIcon={isSavingGoal ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              onClick={handleAddGoal}
+              disabled={isSavingGoal || !addForm.title.trim()}
+            >
+              {isSavingGoal ? 'Saving…' : 'Add Goal'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label">Goal title *</label>
+            <input className="input" placeholder="e.g. Reduce anxiety symptoms" value={addForm.title} onChange={e => setAddForm(f => ({ ...f, title: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label">Description</label>
+            <textarea className="input min-h-[80px]" placeholder="What does achieving this goal look like?" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Category</label>
+              <select className="input" value={addForm.category} onChange={e => setAddForm(f => ({ ...f, category: e.target.value as TreatmentGoal['category'] }))}>
+                <option value="symptom_reduction">Symptom Reduction</option>
+                <option value="behavioral">Behavioral Change</option>
+                <option value="cognitive">Cognitive</option>
+                <option value="interpersonal">Interpersonal</option>
+                <option value="functional">Functional</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Priority</label>
+              <select className="input" value={addForm.priority} onChange={e => setAddForm(f => ({ ...f, priority: e.target.value as TreatmentGoal['priority'] }))}>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label">Target date <span className="text-text-muted font-normal">(optional)</span></label>
+            <input className="input" type="date" value={addForm.targetDate} onChange={e => setAddForm(f => ({ ...f, targetDate: e.target.value }))} />
+          </div>
+          <div>
+            <label className="label">Milestones <span className="text-text-muted font-normal">(optional)</span></label>
+            <div className="flex gap-2 mb-2">
+              <input
+                className="input flex-1"
+                placeholder="Add a milestone step..."
+                value={addForm.milestoneText}
+                onChange={e => setAddForm(f => ({ ...f, milestoneText: e.target.value }))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && addForm.milestoneText.trim()) {
+                    setMilestoneList(prev => [...prev, addForm.milestoneText.trim()]);
+                    setAddForm(f => ({ ...f, milestoneText: '' }));
+                  }
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (addForm.milestoneText.trim()) {
+                    setMilestoneList(prev => [...prev, addForm.milestoneText.trim()]);
+                    setAddForm(f => ({ ...f, milestoneText: '' }));
+                  }
+                }}
+              >Add</Button>
+            </div>
+            {milestoneList.map((m, i) => (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-sand rounded-lg mb-1">
+                <Circle className="w-4 h-4 text-text-muted flex-shrink-0" />
+                <span className="text-sm flex-1">{m}</span>
+                <button onClick={() => setMilestoneList(prev => prev.filter((_, j) => j !== i))} className="text-text-muted hover:text-error">
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -1428,7 +1665,7 @@ function NotesTab({
                 <div className="flex items-start justify-between mb-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-text-primary">{note.title}</h3>
+                      <h3 className="font-semibold text-text-primary">{(note as any).title || `${note.note_format?.toUpperCase() || 'Clinical'} Note`}</h3>
                       {note.ai_generated && (
                         <Badge variant="info" size="sm">
                           <Sparkles className="w-3 h-3 mr-1" />
@@ -1560,16 +1797,16 @@ function HomeworkTab({ homework }: { homework: ReturnType<typeof useDemoData>['h
                     </Badge>
                   </div>
                   <p className="text-sm text-text-muted mb-2">
-                    {getExerciseTypeLabel(hw.exercise_type)} •
+                    {getExerciseTypeLabel((hw as any).exercise_type || (hw as any).category)} •
                     Assigned {formatDate(hw.created_at)}
                     {hw.due_date && ` • Due ${formatDate(hw.due_date)}`}
                   </p>
                   <p className="text-sm text-text-secondary">{hw.description}</p>
 
-                  {hw.response && (
+                  {((hw as any).response || (hw as any).client_response) && (
                     <div className="mt-3 p-3 bg-success/10 rounded-lg">
                       <p className="text-sm font-medium text-success mb-1">Client Response:</p>
-                      <p className="text-sm text-text-secondary">{hw.response}</p>
+                      <p className="text-sm text-text-secondary">{(hw as any).response || (hw as any).client_response}</p>
                     </div>
                   )}
                 </div>

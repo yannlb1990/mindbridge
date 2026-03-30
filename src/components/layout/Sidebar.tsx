@@ -21,6 +21,7 @@ import {
   FileStack,
   Link2,
   ArrowLeftRight,
+  UserCheck,
 } from 'lucide-react';
 
 const navigation = [
@@ -34,6 +35,7 @@ const navigation = [
   { name: 'Templates', href: '/templates', icon: FileStack, isNew: true },
   { name: 'Library', href: '/library', icon: BookOpen },
   { name: 'Messages', href: '/messages', icon: MessageSquare },
+  { name: 'Waitlist', href: '/waitlist', icon: UserCheck },
 ];
 
 const secondaryNavigation = [

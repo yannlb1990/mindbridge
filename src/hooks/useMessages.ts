@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase, isDemoMode } from '@/lib/supabase';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
 export interface Message {
@@ -93,7 +93,7 @@ export function useMessages() {
   const fetchConversations = useCallback(async () => {
     if (!user) return;
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setConversations(DEMO_CONVERSATIONS);
       setIsLoading(false);
       return;
@@ -128,7 +128,7 @@ export function useMessages() {
 
   // Load messages for active conversation
   const fetchMessages = useCallback(async (conversationId: string) => {
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       setMessages(DEMO_MESSAGES[conversationId] || []);
       return;
     }
@@ -155,7 +155,7 @@ export function useMessages() {
     fetchMessages(conversationId);
 
     // Subscribe to real-time updates for this conversation
-    if (!isDemoMode) {
+    if (!isEffectiveDemo(user?.id)) {
       if (subscriptionRef.current) {
         subscriptionRef.current.unsubscribe();
       }
@@ -178,7 +178,7 @@ export function useMessages() {
     if (!content.trim() || !user) return false;
     setIsSending(true);
 
-    if (isDemoMode) {
+    if (isEffectiveDemo(user?.id)) {
       const newMessage: Message = {
         id: `msg-${Date.now()}`,
         conversation_id: conversationId,
@@ -225,12 +225,30 @@ export function useMessages() {
     }
   }, [user, fetchConversations]);
 
+  const convSubscriptionRef = useRef<any>(null);
+
   useEffect(() => {
     fetchConversations();
+
+    // Subscribe to new messages across all conversations so unread counts update live
+    if (!isEffectiveDemo(user?.id) && user?.id) {
+      convSubscriptionRef.current = supabase
+        .channel(`conversations:${user.id}`)
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        }, () => {
+          fetchConversations();
+        })
+        .subscribe();
+    }
+
     return () => {
       subscriptionRef.current?.unsubscribe();
+      convSubscriptionRef.current?.unsubscribe();
     };
-  }, [fetchConversations]);
+  }, [fetchConversations, user?.id]);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId) || null;
   const totalUnread = conversations.reduce((sum, c) => sum + (c.clinician_unread || 0), 0);

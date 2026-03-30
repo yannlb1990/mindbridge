@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import { demoSessionSentiments } from '@/lib/ai/demoData';
-import { useDemoData } from '@/hooks/useDemoData';
+import { useClients } from '@/hooks/useClients';
+import { useSessions } from '@/hooks/useSessions';
+import { useAuthStore } from '@/stores/authStore';
+import { isEffectiveDemo } from '@/lib/supabase';
 import { SessionSentiment, SentimentTimelineEntry } from '@/lib/ai/types';
 import {
   TrendingUp,
@@ -28,11 +31,59 @@ import {
 } from 'lucide-react';
 
 export default function SentimentAnalysisPage() {
-  const { clients, sessions } = useDemoData();
-  const [selectedSession, setSelectedSession] = useState<SessionSentiment | null>(demoSessionSentiments[0]);
+  const { user } = useAuthStore();
+  const demoMode = isEffectiveDemo(user?.id);
+  const { clients } = useClients();
+  const { sessions: realSessions } = useSessions();
+
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+  const [selectedSession, setSelectedSession] = useState<SessionSentiment | null>(demoMode ? demoSessionSentiments[0] : null);
+  const [loading, setLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  const client = clients.find(c => c.id === selectedSession?.clientId);
+  // For demo mode, find the client matching the sentiment
+  const client = demoMode
+    ? clients.find(c => c.id === selectedSession?.clientId)
+    : null;
+
+  // Build real session options — only completed sessions with notes
+  const realSessionOptions = realSessions
+    .filter(s => s.status === 'completed')
+    .map(s => ({
+      value: s.id,
+      label: `${s.client_name || 'Client'} — ${new Date(s.scheduled_start).toLocaleDateString('en-AU')}`,
+    }));
+
+  useEffect(() => {
+    if (demoMode) {
+      setSelectedSessionId(demoSessionSentiments[0]?.sessionId || '');
+    } else if (realSessionOptions.length > 0 && !selectedSessionId) {
+      setSelectedSessionId(realSessionOptions[0].value);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demoMode, realSessions.length]);
+
+  const analyzeSession = async (sessionId: string) => {
+    if (demoMode) {
+      const s = demoSessionSentiments.find(s => s.sessionId === sessionId);
+      setSelectedSession(s || demoSessionSentiments[0]);
+      return;
+    }
+    setLoading(true);
+    setAiError(null);
+    setSelectedSession(null);
+    try {
+      const res = await fetch(`/api/insights/sentiment?sessionId=${sessionId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to analyse session');
+      setSelectedSession(data);
+    } catch (e: any) {
+      setAiError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
@@ -97,19 +148,18 @@ export default function SentimentAnalysisPage() {
                   Select Session to Analyze
                 </label>
                 <Select
-                  value={selectedSession?.sessionId || ''}
+                  value={selectedSessionId}
                   onChange={(e) => {
-                    const session = demoSessionSentiments.find(s => s.sessionId === e.target.value);
-                    setSelectedSession(session || null);
+                    setSelectedSessionId(e.target.value);
+                    analyzeSession(e.target.value);
                   }}
-                  options={demoSessionSentiments.map(s => ({
-                    value: s.sessionId,
-                    label: `Session ${s.sessionId.split('-')[1]} - ${new Date(s.sessionDate).toLocaleDateString('en-AU', {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric'
-                    })} (${s.duration} min)`,
-                  }))}
+                  options={demoMode
+                    ? demoSessionSentiments.map(s => ({
+                        value: s.sessionId,
+                        label: `Session ${s.sessionId.split('-')[1]} - ${new Date(s.sessionDate).toLocaleDateString('en-AU', { weekday: 'short', month: 'short', day: 'numeric' })} (${s.duration} min)`,
+                      }))
+                    : realSessionOptions
+                  }
                 />
               </div>
               <div className="text-right">
@@ -119,6 +169,33 @@ export default function SentimentAnalysisPage() {
             </div>
           </CardContent>
         </Card>
+
+        {loading && (
+          <Card>
+            <CardContent className="pt-8 pb-8 flex items-center justify-center gap-3 text-text-muted">
+              <Heart className="w-5 h-5 animate-pulse text-sage" />
+              <span>Analysing session with AI…</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {aiError && (
+          <Card className="border-error/30 bg-error/5">
+            <CardContent className="pt-4 pb-4 text-sm text-error">
+              {aiError.includes('No note found') ? (
+                <>No clinical note found for this session. <a href="/session-capture" className="underline">Generate a note</a> first, then analyse sentiment.</>
+              ) : aiError}
+            </CardContent>
+          </Card>
+        )}
+
+        {!loading && !selectedSession && !aiError && !demoMode && realSessionOptions.length === 0 && (
+          <Card className="border-dashed">
+            <CardContent className="pt-8 pb-8 text-center text-text-muted text-sm">
+              No completed sessions found. Complete a session and generate a clinical note to enable sentiment analysis.
+            </CardContent>
+          </Card>
+        )}
 
         {selectedSession && (
           <>

@@ -8,7 +8,11 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/stores/authStore';
-import { useDemoData } from '@/hooks/useDemoData';
+import { useClients } from '@/hooks/useClients';
+import { useSessions } from '@/hooks/useSessions';
+import { useNotes } from '@/hooks/useNotes';
+import { useHomework } from '@/hooks/useHomework';
+import { useClinicianTasks } from '@/hooks/useClinicianTasks';
 import { NewSessionModal } from '@/components/sessions/NewSessionModal';
 import {
   Users,
@@ -21,7 +25,6 @@ import {
   Video,
   MapPin,
   FileText,
-  Loader2,
   BookOpen,
   CheckCircle,
   Circle,
@@ -33,85 +36,17 @@ import {
 import { formatDate, calculateAge } from '@/lib/utils';
 import Link from 'next/link';
 
-interface ClinicianTask {
-  id: string;
-  description: string;
-  client_name?: string;
-  client_id?: string;
-  priority: 'high' | 'medium' | 'low';
-  category: string;
-  due?: string;
-  completed: boolean;
-}
-
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { clients, sessions, notes, homework, alerts } = useDemoData();
+  const { clients } = useClients();
+  const { sessions } = useSessions();
+  const { notes } = useNotes();
+  const { homework } = useHomework();
+  const { tasks: clinicianTasks, addTask, toggleTask } = useClinicianTasks();
   const [isNewSessionOpen, setIsNewSessionOpen] = useState(false);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskText, setNewTaskText] = useState('');
-
-  // Demo clinician tasks
-  const [clinicianTasks, setClinicianTasks] = useState<ClinicianTask[]>([
-    {
-      id: 'ctask-1',
-      description: 'Complete referral for dietitian - Emma Thompson',
-      client_name: 'Emma Thompson',
-      client_id: 'client-1',
-      priority: 'high',
-      category: 'Referral',
-      due: 'Today',
-      completed: false,
-    },
-    {
-      id: 'ctask-2',
-      description: 'Send resources to parents about supporting meal times',
-      client_name: 'Emma Thompson',
-      client_id: 'client-1',
-      priority: 'high',
-      category: 'Family Support',
-      completed: false,
-    },
-    {
-      id: 'ctask-3',
-      description: 'Follow up with school counselor about lunch support program',
-      client_name: 'Emma Thompson',
-      client_id: 'client-1',
-      priority: 'medium',
-      category: 'Coordination',
-      completed: false,
-    },
-    {
-      id: 'ctask-4',
-      description: 'Review PHQ-9 assessment results - Sophie Williams',
-      client_name: 'Sophie Williams',
-      client_id: 'client-3',
-      priority: 'high',
-      category: 'Assessment',
-      due: 'Today',
-      completed: false,
-    },
-    {
-      id: 'ctask-5',
-      description: 'Prepare coping plan for school trip',
-      client_name: 'Emma Thompson',
-      client_id: 'client-1',
-      priority: 'medium',
-      category: 'Treatment Planning',
-      due: 'This week',
-      completed: false,
-    },
-    {
-      id: 'ctask-6',
-      description: 'Schedule family session for next week - Liam Nguyen',
-      client_name: 'Liam Nguyen',
-      client_id: 'client-2',
-      priority: 'medium',
-      category: 'Scheduling',
-      completed: true,
-    },
-  ]);
 
   const todaySessions = sessions.filter((s) => {
     const sessionDate = new Date(s.scheduled_start).toDateString();
@@ -121,6 +56,37 @@ export default function DashboardPage() {
   const highRiskClients = clients.filter(
     (c) => c.current_risk_level === 'high' || c.current_risk_level === 'critical'
   );
+
+  // MHTP / Better Access alerts
+  const today = new Date();
+  const mhtpAlerts = clients.flatMap((c) => {
+    const alerts: Array<{ type: 'critical' | 'warning'; title: string; message: string }> = [];
+    // Sessions running low
+    const sessionsRemaining =
+      c.mhtp_sessions_total != null && c.mhtp_sessions_used != null
+        ? c.mhtp_sessions_total - c.mhtp_sessions_used
+        : null;
+    if (sessionsRemaining !== null && sessionsRemaining <= 2 && sessionsRemaining >= 0) {
+      alerts.push({
+        type: sessionsRemaining === 0 ? 'critical' : 'warning',
+        title: `MHTP: ${c.first_name} ${c.last_name} — ${sessionsRemaining} session${sessionsRemaining === 1 ? '' : 's'} remaining`,
+        message: 'GP referral renewal required before next appointment.',
+      });
+    }
+    // Referral expiring within 30 days
+    if (c.referral_expiry) {
+      const expiry = new Date(c.referral_expiry);
+      const daysUntilExpiry = Math.ceil((expiry.getTime() - today.getTime()) / 86400000);
+      if (daysUntilExpiry <= 30 && daysUntilExpiry >= 0) {
+        alerts.push({
+          type: daysUntilExpiry <= 7 ? 'critical' : 'warning',
+          title: `Referral expiring: ${c.first_name} ${c.last_name}`,
+          message: `GP referral expires in ${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}.`,
+        });
+      }
+    }
+    return alerts;
+  });
 
   const unsignedNotes = notes.filter((n) => !n.is_signed);
 
@@ -162,25 +128,12 @@ export default function DashboardPage() {
   };
 
   const toggleTaskComplete = (taskId: string) => {
-    setClinicianTasks(tasks =>
-      tasks.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
+    toggleTask(taskId);
   };
 
   const handleAddTask = () => {
     if (!newTaskText.trim()) return;
-    setClinicianTasks(tasks => [
-      {
-        id: `ctask-${Date.now()}`,
-        description: newTaskText.trim(),
-        priority: 'medium',
-        category: 'General',
-        completed: false,
-      },
-      ...tasks,
-    ]);
+    addTask(newTaskText.trim(), 'medium');
     setNewTaskText('');
     setIsAddingTask(false);
   };
@@ -360,11 +313,11 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {alerts.length === 0 ? (
+              {mhtpAlerts.length === 0 ? (
                 <p className="text-sm text-text-muted text-center py-4">No alerts</p>
               ) : (
                 <div className="space-y-3">
-                  {alerts.slice(0, 5).map((alert, index) => (
+                  {mhtpAlerts.slice(0, 8).map((alert, index) => (
                     <div
                       key={index}
                       className={`p-3 rounded-lg border-l-4 ${
@@ -454,10 +407,10 @@ export default function DashboardPage() {
                             {task.priority}
                           </Badge>
                           <span className="text-xs text-text-muted">{task.category}</span>
-                          {task.due && (
+                          {task.due_label && (
                             <span className="text-xs text-calm">
                               <Clock className="w-3 h-3 inline mr-1" />
-                              {task.due}
+                              {task.due_label}
                             </span>
                           )}
                         </div>

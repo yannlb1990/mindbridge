@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
+import { useLibraryDocuments, type LibraryDocument } from '@/hooks/useLibraryDocuments';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -395,108 +396,36 @@ export default function LibraryPage() {
   const [activeTab, setActiveTab] = useState<'documents' | 'resources'>('documents');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Document management state
-  const [documents, setDocuments] = useState<Document[]>([
-    {
-      id: 'doc-1',
-      name: 'CBT-E Treatment Manual',
-      type: 'pdf',
-      category: 'Treatment Protocols',
-      tags: ['CBT-E', 'Eating Disorders', 'Manual'],
-      size: '2.4 MB',
-      starred: true,
-      uploadedAt: '2025-11-15',
-      lastAccessed: '2025-12-28',
-    },
-    {
-      id: 'doc-2',
-      name: 'FBT Phase 1 Guidelines',
-      type: 'pdf',
-      category: 'Treatment Protocols',
-      tags: ['FBT', 'Family Therapy', 'Eating Disorders'],
-      size: '1.8 MB',
-      starred: true,
-      uploadedAt: '2025-10-20',
-      lastAccessed: '2025-12-30',
-    },
-    {
-      id: 'doc-3',
-      name: 'PHQ-9 Scoring Guide',
-      type: 'pdf',
-      category: 'Assessment Tools',
-      tags: ['PHQ-9', 'Depression', 'Assessment'],
-      size: '450 KB',
-      starred: false,
-      uploadedAt: '2025-09-01',
-      lastAccessed: '2025-12-25',
-    },
-    {
-      id: 'doc-4',
-      name: 'GAD-7 Administration',
-      type: 'pdf',
-      category: 'Assessment Tools',
-      tags: ['GAD-7', 'Anxiety', 'Assessment'],
-      size: '380 KB',
-      starred: false,
-      uploadedAt: '2025-09-01',
-      lastAccessed: '2025-12-20',
-    },
-    {
-      id: 'doc-5',
-      name: 'EDE-Q Interpretation Guide',
-      type: 'pdf',
-      category: 'Assessment Tools',
-      tags: ['EDE-Q', 'Eating Disorders', 'Assessment'],
-      size: '1.2 MB',
-      starred: true,
-      uploadedAt: '2025-08-15',
-      lastAccessed: '2025-12-29',
-    },
-    {
-      id: 'doc-6',
-      name: 'Safety Plan Template',
-      type: 'doc',
-      category: 'Clinical Templates',
-      tags: ['Safety Plan', 'Crisis', 'Template'],
-      size: '125 KB',
-      starred: false,
-      uploadedAt: '2025-07-10',
-      lastAccessed: '2025-12-22',
-    },
-    {
-      id: 'doc-7',
-      name: 'Meal Planning Worksheet',
-      type: 'pdf',
-      category: 'Client Resources',
-      tags: ['Eating Disorders', 'Meal Planning', 'Worksheet'],
-      size: '280 KB',
-      starred: false,
-      uploadedAt: '2025-11-01',
-      lastAccessed: '2025-12-27',
-    },
-    {
-      id: 'doc-8',
-      name: 'Thought Record Template',
-      type: 'pdf',
-      category: 'Client Resources',
-      tags: ['CBT', 'Thought Record', 'Worksheet'],
-      size: '195 KB',
-      starred: true,
-      uploadedAt: '2025-10-05',
-      lastAccessed: '2025-12-31',
-    },
-    {
-      id: 'doc-10',
-      name: 'DBT Skills Handbook',
-      type: 'pdf',
-      category: 'Treatment Protocols',
-      tags: ['DBT', 'Skills', 'Manual'],
-      size: '4.1 MB',
-      starred: true,
-      uploadedAt: '2025-05-15',
-      lastAccessed: '2025-12-28',
-    },
-  ]);
+  // Document management — backed by useLibraryDocuments hook
+  const {
+    documents: hookDocs,
+    isLoading: docsLoading,
+    uploadDocument: hookUpload,
+    toggleStar: hookToggleStar,
+    deleteDocument: hookDelete,
+    updateLastAccessed: hookUpdateLastAccessed,
+  } = useLibraryDocuments();
+
+  // Local UI state — mirror of hook data, converted to local Document shape
+  const [documents, setDocuments] = useState<Document[]>([]);
+
+  // Sync from hook whenever hook docs change
+  useEffect(() => {
+    setDocuments(
+      hookDocs.map((d) => ({
+        id: d.id,
+        name: d.name,
+        type: d.type,
+        category: d.category,
+        tags: d.tags,
+        size: d.size,
+        url: d.url,
+        starred: d.starred,
+        uploadedAt: d.uploaded_at,
+        lastAccessed: d.last_accessed_at,
+      }))
+    );
+  }, [hookDocs]);
 
   // Modal states
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
@@ -717,16 +646,14 @@ export default function LibraryPage() {
     });
   };
 
-  // Toggle star
+  // Toggle star — delegate to hook (handles both demo and real users)
   const toggleStar = (docId: string) => {
-    setDocuments(prev => prev.map(doc =>
-      doc.id === docId ? { ...doc, starred: !doc.starred } : doc
-    ));
+    hookToggleStar(docId);
   };
 
-  // Delete document
+  // Delete document — delegate to hook
   const deleteDocument = (docId: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== docId));
+    hookDelete(docId);
     if (viewingDocument?.id === docId) {
       setViewingDocument(null);
     }
@@ -777,46 +704,40 @@ export default function LibraryPage() {
     }
   };
 
-  // Handle file upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload — delegate to hook for real users, simulate for demo
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files?.length) return;
 
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
+    // Simulate progress bar
     const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
+      setUploadProgress((prev) => {
+        if (prev >= 90) {
           clearInterval(interval);
-          return 100;
+          return 90;
         }
         return prev + 10;
       });
     }, 200);
 
-    // Add new documents after "upload"
-    setTimeout(() => {
-      Array.from(files).forEach(file => {
-        const newDoc: Document = {
-          id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          name: file.name.replace(/\.[^/.]+$/, ''),
-          type: file.type.includes('pdf') ? 'pdf' : file.type.includes('image') ? 'image' : 'doc',
-          category: 'Uploads',
-          tags: ['Uploaded'],
-          size: `${(file.size / 1024).toFixed(1)} KB`,
-          starred: false,
-          uploadedAt: new Date().toISOString().split('T')[0],
-          lastAccessed: new Date().toISOString().split('T')[0],
-        };
-        setDocuments(prev => [newDoc, ...prev]);
-      });
-
-      setIsUploading(false);
-      setShowUploadModal(false);
-      setUploadProgress(0);
-    }, 2500);
+    try {
+      for (const file of Array.from(files)) {
+        await hookUpload(file, { category: 'Uploads', tags: ['Uploaded'] });
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+    } finally {
+      clearInterval(interval);
+      setUploadProgress(100);
+      setTimeout(() => {
+        setIsUploading(false);
+        setShowUploadModal(false);
+        setUploadProgress(0);
+      }, 400);
+    }
   };
 
   // Create new folder
@@ -938,8 +859,16 @@ export default function LibraryPage() {
         {/* Documents Tab */}
         {activeTab === 'documents' && (
           <>
+            {/* Loading state */}
+            {docsLoading && (
+              <div className="flex items-center justify-center py-16">
+                <Loader2 className="w-8 h-8 text-sage animate-spin" />
+                <span className="ml-3 text-text-secondary">Loading documents...</span>
+              </div>
+            )}
+
             {/* Starred Documents */}
-            {documents.some(d => d.starred) && (
+            {!docsLoading && documents.some(d => d.starred) && (
               <div className="mb-8">
                 <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
                   <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
@@ -966,9 +895,9 @@ export default function LibraryPage() {
             )}
 
             {/* All Documents */}
-            <h2 className="text-lg font-semibold text-text-primary mb-4">
+            {!docsLoading && <h2 className="text-lg font-semibold text-text-primary mb-4">
               All Documents ({filteredDocuments.length})
-            </h2>
+            </h2>}
 
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">

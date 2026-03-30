@@ -7,7 +7,7 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { Button } from '@/components/ui/Button';
 import { useSessions } from '@/hooks/useSessions';
-import { useDemoData } from '@/hooks/useDemoData';
+import { useClients } from '@/hooks/useClients';
 
 interface NewSessionModalProps {
   isOpen: boolean;
@@ -25,7 +25,7 @@ export function NewSessionModal({
   preselectedDate
 }: NewSessionModalProps) {
   const { createSession } = useSessions();
-  const { clients } = useDemoData();
+  const { clients } = useClients();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

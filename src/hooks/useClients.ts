@@ -33,6 +33,12 @@ export interface Client {
   referrer_name?: string;
   referral_date?: string;
 
+  // MHTP / Better Access tracking
+  mhtp_sessions_total?: number;      // total sessions on current plan (usually 10)
+  mhtp_sessions_used?: number;       // sessions used so far
+  referral_expiry?: string;          // ISO date — when referral expires
+  gp_referral_number?: string;       // GP referral/provider number
+
   // Healthcare Team
   gp_name?: string;
   gp_phone?: string;
@@ -66,6 +72,10 @@ export interface Client {
 
   notes?: string;
   created_at: string;
+
+  // Onboarding
+  clinician_id?: string;
+  onboarding_completed?: boolean;
 }
 
 interface CreateClientData {
@@ -289,6 +299,22 @@ export function useClients() {
         emergency_contact_name: cp.emergency_contact_name,
         emergency_contact_phone: cp.emergency_contact_phone,
         referrer_name: cp.referrer_name,
+        referral_date: cp.referral_date,
+        medicare_number: cp.medicare_number,
+        billing_type: cp.billing_type,
+        gp_name: cp.gp_name,
+        gp_phone: cp.gp_phone,
+        gp_address: cp.gp_address,
+        psychiatrist_name: cp.psychiatrist_name,
+        psychiatrist_phone: cp.psychiatrist_phone,
+        secondary_diagnoses: cp.secondary_diagnoses,
+        treatment_start_date: cp.treatment_start_date,
+        consent_to_telehealth: cp.consent_to_telehealth,
+        consent_to_recording: cp.consent_to_recording,
+        mhtp_sessions_total: cp.mhtp_sessions_total,
+        mhtp_sessions_used: cp.mhtp_sessions_used,
+        referral_expiry: cp.referral_expiry,
+        gp_referral_number: cp.gp_referral_number,
         notes: cp.notes,
         created_at: cp.created_at,
       }));
@@ -331,44 +357,35 @@ export function useClients() {
     }
 
     try {
-      // Create user record first
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .insert({
+      // Use server-side API route — direct insert into users fails because
+      // users.id has a FK constraint on auth.users(id), which requires
+      // supabase.auth.admin.createUser() (service role, server-only)
+      const res = await fetch('/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: data.email,
-          role: 'client',
-          first_name: data.firstName,
-          last_name: data.lastName,
-          date_of_birth: data.dateOfBirth || null,
-          phone: data.phone || null,
-          pronouns: data.pronouns || null,
-        })
-        .select()
-        .single();
+          firstName: data.firstName,
+          lastName: data.lastName,
+          dateOfBirth: data.dateOfBirth,
+          phone: data.phone,
+          pronouns: data.pronouns,
+          primaryDiagnosis: data.primaryDiagnosis,
+          treatmentApproach: data.treatmentApproach,
+          riskLevel: data.riskLevel,
+          emergencyContactName: data.emergencyContactName,
+          emergencyContactPhone: data.emergencyContactPhone,
+          referrerName: data.referrerName,
+          notes: data.notes,
+          clinicianId: user.id,
+        }),
+      });
 
-      if (userError) throw userError;
-
-      // Create client profile
-      const { data: clientData, error: clientError } = await supabase
-        .from('client_profiles')
-        .insert({
-          user_id: userData.id,
-          clinician_id: user.id,
-          primary_diagnosis: data.primaryDiagnosis || null,
-          treatment_approach: data.treatmentApproach || null,
-          current_risk_level: data.riskLevel || 'low',
-          emergency_contact_name: data.emergencyContactName || null,
-          emergency_contact_phone: data.emergencyContactPhone || null,
-          referrer_name: data.referrerName || null,
-          notes: data.notes || null,
-        })
-        .select()
-        .single();
-
-      if (clientError) throw clientError;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create client');
 
       await fetchClients();
-      return { success: true, clientId: clientData.id };
+      return { success: true, clientId: json.clientId };
     } catch (err: any) {
       console.error('Error creating client:', err);
       return { success: false, error: err.message };

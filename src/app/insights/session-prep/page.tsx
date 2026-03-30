@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/Card';
@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import { Avatar } from '@/components/ui/Avatar';
 import { demoSessionPreps } from '@/lib/ai/demoData';
-import { useDemoData } from '@/hooks/useDemoData';
+import { useClients } from '@/hooks/useClients';
+import { useAuthStore } from '@/stores/authStore';
+import { isEffectiveDemo } from '@/lib/supabase';
 import { SessionPrep } from '@/lib/ai/types';
 import {
   Calendar,
@@ -39,9 +41,55 @@ import {
 
 export default function SessionPrepPage() {
   const router = useRouter();
-  const { clients } = useDemoData();
-  const [selectedPrep, setSelectedPrep] = useState<SessionPrep | null>(demoSessionPreps[0]);
+  const { user } = useAuthStore();
+  const demoMode = isEffectiveDemo(user?.id);
+  const { clients: realClients } = useClients();
+  const clients = realClients;
+
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedPrep, setSelectedPrep] = useState<SessionPrep | null>(demoMode ? demoSessionPreps[0] : null);
+  const [loading, setLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [resourceToast, setResourceToast] = useState(false);
+
+  // Auto-select first client on load
+  useEffect(() => {
+    if (demoMode && demoSessionPreps[0]) {
+      setSelectedClientId(demoSessionPreps[0].clientId);
+    } else if (!demoMode && realClients.length > 0 && !selectedClientId) {
+      setSelectedClientId(realClients[0].id);
+    }
+  }, [demoMode, realClients, selectedClientId]);
+
+  const handleClientChange = async (clientId: string) => {
+    setSelectedClientId(clientId);
+    setAiError(null);
+    if (demoMode) {
+      const prep = demoSessionPreps.find(p => p.clientId === clientId);
+      setSelectedPrep(prep || demoSessionPreps[0]);
+      return;
+    }
+    setLoading(true);
+    setSelectedPrep(null);
+    try {
+      const res = await fetch(`/api/insights/session-prep?clientId=${clientId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to generate prep');
+      setSelectedPrep(data);
+    } catch (e: any) {
+      setAiError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load prep for initial client
+  useEffect(() => {
+    if (!demoMode && selectedClientId && !selectedPrep && !loading) {
+      handleClientChange(selectedClientId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClientId, demoMode]);
 
   const showResourceToast = useCallback(() => {
     setResourceToast(true);
@@ -148,15 +196,12 @@ export default function SessionPrepPage() {
                   Prepare for Session With
                 </label>
                 <Select
-                  value={selectedPrep?.clientId || ''}
-                  onChange={(e) => {
-                    const prep = demoSessionPreps.find(p => p.clientId === e.target.value);
-                    setSelectedPrep(prep || null);
-                  }}
-                  options={demoSessionPreps.map(p => ({
-                    value: p.clientId,
-                    label: p.clientName,
-                  }))}
+                  value={selectedClientId}
+                  onChange={(e) => handleClientChange(e.target.value)}
+                  options={demoMode
+                    ? demoSessionPreps.map(p => ({ value: p.clientId, label: p.clientName }))
+                    : realClients.map(c => ({ value: c.id, label: `${c.first_name} ${c.last_name}` }))
+                  }
                 />
               </div>
 
@@ -194,6 +239,23 @@ export default function SessionPrepPage() {
             </div>
           </CardContent>
         </Card>
+
+        {loading && (
+          <Card>
+            <CardContent className="pt-8 pb-8 flex items-center justify-center gap-3 text-text-muted">
+              <Zap className="w-5 h-5 animate-pulse text-sage" />
+              <span>Generating session brief with AI…</span>
+            </CardContent>
+          </Card>
+        )}
+
+        {aiError && (
+          <Card className="border-error/30 bg-error/5">
+            <CardContent className="pt-4 pb-4 text-sm text-error">
+              {aiError}
+            </CardContent>
+          </Card>
+        )}
 
         {selectedPrep && (
           <>

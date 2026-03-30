@@ -10,10 +10,11 @@ interface ModalProps {
   title: string;
   description?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export function Modal({ isOpen, onClose, title, description, children, size = 'md' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, description, children, footer, size = 'md' }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -77,6 +78,13 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'm
         <div className="flex-1 overflow-y-auto p-6">
           {children}
         </div>
+
+        {/* Footer */}
+        {footer && (
+          <div className="px-6 py-4 border-t border-beige bg-sand/50 rounded-b-2xl">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );

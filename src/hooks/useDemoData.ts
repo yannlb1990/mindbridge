@@ -18,6 +18,10 @@ interface DemoClient extends Partial<ClientProfile> {
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
   treatment_start_date?: string;
+  mhtp_sessions_total?: number;
+  mhtp_sessions_used?: number;
+  referral_expiry?: string;
+  gp_referral_number?: string;
 }
 
 interface DemoSession {

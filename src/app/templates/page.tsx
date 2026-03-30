@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase, isEffectiveDemo } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/authStore';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -1111,6 +1113,7 @@ const categoryInfo = {
 
 export default function TemplatesPage() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const [templates, setTemplates] = useState<SessionTemplate[]>(PRESET_TEMPLATES);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -1118,25 +1121,68 @@ export default function TemplatesPage() {
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SessionTemplate | null>(null);
 
-  // Load templates from localStorage on mount and merge with presets
+  // Load templates on mount: localStorage (always) + Supabase (real users)
   useEffect(() => {
     const stored = localStorage.getItem('mindbridge-templates');
+    let savedTemplates: any[] = [];
     if (stored) {
       try {
-        const savedTemplates = JSON.parse(stored);
-        // Merge: keep presets, add any custom templates
-        const customTemplates = savedTemplates.filter((t: SessionTemplate) => t.isCustom);
-        const presetIds = PRESET_TEMPLATES.map(t => t.id);
-        const updatedPresets = PRESET_TEMPLATES.map(preset => {
-          const saved = savedTemplates.find((t: SessionTemplate) => t.id === preset.id);
-          return saved ? { ...preset, isStarred: saved.isStarred, usageCount: saved.usageCount, lastUsed: saved.lastUsed } : preset;
-        });
-        setTemplates([...updatedPresets, ...customTemplates]);
+        savedTemplates = JSON.parse(stored);
       } catch (e) {
-        console.error('Failed to load templates:', e);
+        console.error('Failed to parse templates from localStorage:', e);
       }
     }
-  }, []);
+
+    const updatedPresets = PRESET_TEMPLATES.map(preset => {
+      const saved = savedTemplates.find((t: any) => t.id === preset.id);
+      return saved ? { ...preset, isStarred: saved.isStarred, usageCount: saved.usageCount, lastUsed: saved.lastUsed } : preset;
+    });
+
+    const localCustom = savedTemplates.filter((t: any) => t.isCustom);
+
+    if (!user || isEffectiveDemo(user.id)) {
+      setTemplates([...updatedPresets, ...localCustom]);
+      return;
+    }
+
+    // Real user: also fetch from Supabase
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('clinician_custom_templates')
+          .select('*')
+          .eq('clinician_id', user.id)
+          .order('created_at', { ascending: false });
+
+        const dbCustom: SessionTemplate[] = (data ?? []).map((row: any) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description ?? '',
+          category: row.category as SessionTemplate['category'],
+          icon: <Edit3 className="w-6 h-6" />,
+          sections: (row.sections as TemplateSection[]) ?? [],
+          suggestedDuration: row.suggested_duration ?? 50,
+          noteFormat: (row.note_format as SessionTemplate['noteFormat']) ?? 'structured',
+          tags: row.tags ?? [],
+          isStarred: row.is_starred ?? false,
+          isCustom: true,
+          usageCount: row.usage_count ?? 0,
+          lastUsed: row.last_used ? new Date(row.last_used).toISOString().split('T')[0] : undefined,
+          color: row.color ?? 'bg-stone-500',
+        }));
+
+        // Merge: DB templates take precedence over localStorage for custom
+        const dbIds = new Set(dbCustom.map(t => t.id));
+        const mergedCustom = [...dbCustom, ...localCustom.filter((t: any) => !dbIds.has(t.id))];
+
+        setTemplates([...updatedPresets, ...mergedCustom]);
+      } catch (err) {
+        console.error('Failed to load templates from Supabase:', err);
+        setTemplates([...updatedPresets, ...localCustom]);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Save templates to localStorage whenever they change
   useEffect(() => {
@@ -1165,9 +1211,23 @@ export default function TemplatesPage() {
   });
 
   const toggleStar = (templateId: string) => {
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+    const newStarred = !template.isStarred;
     setTemplates(prev => prev.map(t =>
-      t.id === templateId ? { ...t, isStarred: !t.isStarred } : t
+      t.id === templateId ? { ...t, isStarred: newStarred } : t
     ));
+    // Persist star for custom templates to Supabase for real users
+    if (template.isCustom && user && !isEffectiveDemo(user.id)) {
+      supabase
+        .from('clinician_custom_templates')
+        .update({ is_starred: newStarred })
+        .eq('id', templateId)
+        .eq('clinician_id', user.id)
+        .then(({ error }) => {
+          if (error) console.error('Failed to persist star:', error);
+        });
+    }
   };
 
   const duplicateTemplate = (template: SessionTemplate) => {
@@ -1181,10 +1241,42 @@ export default function TemplatesPage() {
       lastUsed: undefined,
     };
     setTemplates(prev => [...prev, newTemplate]);
+    // Persist to Supabase for real users
+    if (user && !isEffectiveDemo(user.id)) {
+      supabase
+        .from('clinician_custom_templates')
+        .insert({
+          id: newTemplate.id,
+          clinician_id: user.id,
+          name: newTemplate.name,
+          description: newTemplate.description,
+          category: newTemplate.category,
+          note_format: newTemplate.noteFormat,
+          tags: newTemplate.tags,
+          sections: newTemplate.sections,
+          suggested_duration: newTemplate.suggestedDuration,
+          color: newTemplate.color,
+          is_starred: false,
+        })
+        .then(({ error }) => {
+          if (error) console.error('Failed to persist duplicated template:', error);
+        });
+    }
   };
 
   const deleteTemplate = (templateId: string) => {
     setTemplates(prev => prev.filter(t => t.id !== templateId));
+    // Delete from Supabase for real users
+    if (user && !isEffectiveDemo(user.id)) {
+      supabase
+        .from('clinician_custom_templates')
+        .delete()
+        .eq('id', templateId)
+        .eq('clinician_id', user.id)
+        .then(({ error }) => {
+          if (error) console.error('Failed to delete template from DB:', error);
+        });
+    }
   };
 
   const useTemplate = (template: SessionTemplate) => {
@@ -1607,8 +1699,50 @@ export default function TemplatesPage() {
           onSave={(template) => {
             if (editingTemplate) {
               setTemplates(prev => prev.map(t => t.id === editingTemplate.id ? template : t));
+              // Update in Supabase for real users
+              if (user && !isEffectiveDemo(user.id)) {
+                supabase
+                  .from('clinician_custom_templates')
+                  .update({
+                    name: template.name,
+                    description: template.description,
+                    category: template.category,
+                    note_format: template.noteFormat,
+                    tags: template.tags,
+                    sections: template.sections,
+                    suggested_duration: template.suggestedDuration,
+                    color: template.color,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', editingTemplate.id)
+                  .eq('clinician_id', user.id)
+                  .then(({ error }) => {
+                    if (error) console.error('Failed to update template:', error);
+                  });
+              }
             } else {
               setTemplates(prev => [...prev, template]);
+              // Insert to Supabase for real users
+              if (user && !isEffectiveDemo(user.id)) {
+                supabase
+                  .from('clinician_custom_templates')
+                  .insert({
+                    id: template.id,
+                    clinician_id: user.id,
+                    name: template.name,
+                    description: template.description,
+                    category: template.category,
+                    note_format: template.noteFormat,
+                    tags: template.tags,
+                    sections: template.sections,
+                    suggested_duration: template.suggestedDuration,
+                    color: template.color,
+                    is_starred: template.isStarred,
+                  })
+                  .then(({ error }) => {
+                    if (error) console.error('Failed to insert template:', error);
+                  });
+              }
             }
             setShowBuilder(false);
             setEditingTemplate(null);

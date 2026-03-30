@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Home, BookOpen, Calendar, Shield, LogOut,
-  Smile, TrendingUp, PenLine, Library, Gamepad2, ArrowLeftRight,
+  Smile, TrendingUp, PenLine, Library, Gamepad2, ArrowLeftRight, MessageSquare, ClipboardList,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useAgeTheme } from './AgeThemeProvider';
@@ -16,11 +16,13 @@ const SIDEBAR_ITEMS = [
   { href: '/client/mood',       label: 'Mood check-in', childLabel: 'My Mood',     icon: Smile },
   { href: '/client/progress',   label: 'Progress',      childLabel: 'Progress',    icon: TrendingUp },
   { href: '/client/journal',    label: 'Journal',       childLabel: 'My Diary',    icon: PenLine },
-  { href: '/client/homework',   label: 'Homework',      childLabel: 'Tasks',       icon: BookOpen },
+  { href: '/client/homework',    label: 'Homework',      childLabel: 'Tasks',       icon: BookOpen },
+  { href: '/client/assessments', label: 'Assessments',   childLabel: 'Check-ins',   icon: ClipboardList },
   { href: '/client/sessions',   label: 'Sessions',      childLabel: 'Visits',      icon: Calendar },
   { href: '/client/resources',  label: 'Resources',     childLabel: 'Activities',  icon: Library },
   { href: '/client/games',      label: 'Games & Tools', childLabel: 'Games',       icon: Gamepad2 },
   { href: '/client/safety',     label: 'Safety plan',   childLabel: 'Get help',    icon: Shield },
+  { href: '/client/messages',   label: 'Messages',      childLabel: 'Messages',    icon: MessageSquare },
 ];
 
 // Bottom nav — 5 most-used pages

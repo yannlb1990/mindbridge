@@ -101,6 +101,143 @@ export default function SettingsPage() {
     }
   }, [clinicianProfile]);
 
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // MFA state
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaEnrolling, setMfaEnrolling] = useState(false);
+  const [mfaQrCode, setMfaQrCode] = useState('');
+  const [mfaSecret, setMfaSecret] = useState('');
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaError, setMfaError] = useState('');
+  const [mfaSuccess, setMfaSuccess] = useState('');
+
+  // Check MFA status on mount
+  useEffect(() => {
+    if (!user || isEffectiveDemo(user.id)) return;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.mfa.listFactors();
+        const totpFactors = data?.totp ?? [];
+        const verified = totpFactors.find((f: any) => f.status === 'verified');
+        if (verified) {
+          setMfaEnabled(true);
+          setMfaFactorId(verified.id);
+        }
+      } catch (err) {
+        console.error('Failed to check MFA status:', err);
+      }
+    })();
+  }, [user]);
+
+  const handlePasswordChange = async () => {
+    setPasswordError('');
+
+    if (!newPassword || !confirmPassword) {
+      setPasswordError('Please fill in all password fields.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters.');
+      return;
+    }
+
+    if (isEffectiveDemo(user?.id)) {
+      setIsChangingPassword(true);
+      await new Promise((r) => setTimeout(r, 600));
+      setIsChangingPassword(false);
+      setSaveSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setSaveSuccess(false), 2200);
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2200);
+    } catch (err: any) {
+      setPasswordError(err.message ?? 'Failed to update password.');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleMfaEnroll = async () => {
+    if (isEffectiveDemo(user?.id)) {
+      showComingSoon('Two-factor authentication');
+      return;
+    }
+    setMfaError('');
+    setMfaSuccess('');
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+      if (error) throw error;
+      setMfaQrCode(data.totp.qr_code);
+      setMfaSecret(data.totp.secret);
+      setMfaFactorId(data.id);
+      setMfaEnrolling(true);
+    } catch (err: any) {
+      setMfaError(err.message ?? 'Failed to start 2FA setup.');
+    }
+  };
+
+  const handleMfaVerify = async () => {
+    setMfaError('');
+    if (!mfaCode || mfaCode.length !== 6) {
+      setMfaError('Please enter the 6-digit code from your authenticator app.');
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: mfaFactorId,
+        code: mfaCode,
+      });
+      if (error) throw error;
+      setMfaEnabled(true);
+      setMfaEnrolling(false);
+      setMfaCode('');
+      setMfaQrCode('');
+      setMfaSecret('');
+      setMfaSuccess('Two-factor authentication enabled successfully.');
+      setTimeout(() => setMfaSuccess(''), 3000);
+    } catch (err: any) {
+      setMfaError(err.message ?? 'Invalid code. Please try again.');
+    }
+  };
+
+  const handleMfaDisable = async () => {
+    setMfaError('');
+    if (!mfaFactorId) return;
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactorId });
+      if (error) throw error;
+      setMfaEnabled(false);
+      setMfaFactorId('');
+      setMfaSuccess('Two-factor authentication disabled.');
+      setTimeout(() => setMfaSuccess(''), 3000);
+    } catch (err: any) {
+      setMfaError(err.message ?? 'Failed to disable 2FA.');
+    }
+  };
+
   const showComingSoon = (label: string) => {
     setComingSoonToast(label);
     setTimeout(() => setComingSoonToast(''), 2200);
@@ -742,10 +879,32 @@ export default function SettingsPage() {
                     <CardDescription>Update your login password</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <Input label="Current Password" type="password" placeholder="••••••••" />
-                    <Input label="New Password" type="password" placeholder="••••••••" hint="Minimum 8 characters" />
-                    <Input label="Confirm New Password" type="password" placeholder="••••••••" />
-                    <Button onClick={handleSave} isLoading={isSaving} leftIcon={<Save className="w-4 h-4" />}>
+                    <Input
+                      label="Current Password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                    />
+                    <Input
+                      label="New Password"
+                      type="password"
+                      placeholder="••••••••"
+                      hint="Minimum 8 characters"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                    <Input
+                      label="Confirm New Password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                    {passwordError && (
+                      <p className="text-sm text-error">{passwordError}</p>
+                    )}
+                    <Button onClick={handlePasswordChange} isLoading={isChangingPassword} leftIcon={<Save className="w-4 h-4" />}>
                       Update Password
                     </Button>
                   </CardContent>
@@ -762,16 +921,73 @@ export default function SettingsPage() {
                         <p className="font-medium text-text-primary">Authenticator App</p>
                         <p className="text-sm text-text-muted">Use an app like Google Authenticator or Authy</p>
                       </div>
-                      <Badge variant="default">Not enabled</Badge>
+                      <Badge variant={mfaEnabled ? 'success' : 'default'}>
+                        {mfaEnabled ? 'Enabled' : 'Not enabled'}
+                      </Badge>
                     </div>
-                    <div className="flex items-center justify-between p-4 bg-sand rounded-xl">
-                      <div>
-                        <p className="font-medium text-text-primary">SMS Verification</p>
-                        <p className="text-sm text-text-muted">Receive a code via SMS to your phone</p>
+
+                    {mfaError && (
+                      <p className="text-sm text-error">{mfaError}</p>
+                    )}
+                    {mfaSuccess && (
+                      <p className="text-sm text-success">{mfaSuccess}</p>
+                    )}
+
+                    {/* QR code enrollment flow */}
+                    {mfaEnrolling && (
+                      <div className="space-y-4 p-4 border border-sage/30 rounded-xl bg-sage/5">
+                        <p className="text-sm font-medium text-text-primary">
+                          Scan this QR code with your authenticator app
+                        </p>
+                        {mfaQrCode && (
+                          <div
+                            className="flex justify-center"
+                            dangerouslySetInnerHTML={{ __html: mfaQrCode }}
+                          />
+                        )}
+                        {mfaSecret && (
+                          <div>
+                            <p className="text-xs text-text-muted mb-1">Or enter this key manually:</p>
+                            <code className="text-xs bg-sand px-2 py-1 rounded font-mono break-all">
+                              {mfaSecret}
+                            </code>
+                          </div>
+                        )}
+                        <Input
+                          label="Verification Code"
+                          type="text"
+                          placeholder="000000"
+                          value={mfaCode}
+                          onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          hint="Enter the 6-digit code from your authenticator app"
+                        />
+                        <div className="flex gap-3">
+                          <Button onClick={handleMfaVerify} size="sm">Verify & Enable</Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setMfaEnrolling(false);
+                              setMfaQrCode('');
+                              setMfaSecret('');
+                              setMfaCode('');
+                              setMfaError('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
-                      <Badge variant="default">Not enabled</Badge>
-                    </div>
-                    <Button variant="secondary" onClick={() => showComingSoon('Two-factor authentication')}>Enable 2FA</Button>
+                    )}
+
+                    {!mfaEnrolling && !mfaEnabled && (
+                      <Button variant="secondary" onClick={handleMfaEnroll}>Enable 2FA</Button>
+                    )}
+                    {!mfaEnrolling && mfaEnabled && (
+                      <Button variant="ghost" className="text-coral hover:text-coral-dark" onClick={handleMfaDisable}>
+                        Disable 2FA
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
 
